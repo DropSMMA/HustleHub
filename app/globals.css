@@ -5,6 +5,10 @@
 
 @theme {
   --font-display: "Satoshi", "sans-serif";
+  --color-brand-neon: #39FF14;
+  --color-brand-primary: #1A1A1A;
+  --color-brand-secondary: #2A2A2A;
+  --color-brand-tertiary: #404040;
   
   --animate-shimmer: shimmer 3s ease-out infinite alternate;
   --animate-opacity: opacity 0.25s ease-in-out;

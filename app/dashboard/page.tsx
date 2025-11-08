@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Activity,
   ActivityType,
@@ -29,6 +30,24 @@ import Connections from "@/components/app/Connections";
 import Research from "@/components/app/Research";
 import Settings from "@/components/app/Settings";
 import { PlusIcon } from "@/components/app/icons/PlusIcon";
+
+const USER_PROFILE_STORAGE_KEY = "hustlehub:userProfile";
+const ONBOARDING_COMPLETE_STORAGE_KEY = "hustlehub:onboardingComplete";
+
+const createWelcomeActivity = (profile: UserProfile): Activity => ({
+  id: Date.now() + 1,
+  user: profile.name,
+  username: profile.username,
+  avatar: profile.avatar,
+  type: ActivityType.StartupTask,
+  description: `Just joined HustleHub! Ready to start building and connecting. My focus is on ${profile.focuses.join(
+    ", "
+  )}. Let's go! 🚀`,
+  stats: "Joined the community",
+  kudos: 0,
+  comments: [],
+  timestamp: "Just now",
+});
 
 const MOCK_USER_PROFILES: Record<string, UserProfile> = {
   alexdevito: {
@@ -238,6 +257,7 @@ const MOCK_CHALLENGES: Challenge[] = [
 ];
 
 const App: React.FC = () => {
+  const { data: session, status: sessionStatus } = useSession();
   const [currentView, setCurrentView] = useState<View>("feed");
   const [activities, setActivities] = useState<Activity[]>([]);
   const [notifications, setNotifications] =
@@ -263,25 +283,118 @@ const App: React.FC = () => {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const handleCompleteOnboarding = (profile: UserProfile) => {
-    setUserProfile(profile);
-    // Add a mock activity for the new user
-    const welcomeActivity: Activity = {
-      id: Date.now() + 1,
-      user: profile.name,
-      username: profile.username,
-      avatar: profile.avatar,
-      type: ActivityType.StartupTask,
-      description: `Just joined HustleHub! Ready to start building and connecting. My focus is on ${profile.focuses.join(
-        ", "
-      )}. Let's go! 🚀`,
-      stats: "Joined the community",
-      kudos: 0,
-      comments: [],
-      timestamp: "Just now",
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const onboardingCompleted = window.localStorage.getItem(
+      ONBOARDING_COMPLETE_STORAGE_KEY
+    );
+    const storedProfile = window.localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+
+    if (onboardingCompleted && storedProfile) {
+      try {
+        const parsedProfile = JSON.parse(storedProfile) as UserProfile;
+        setUserProfile(parsedProfile);
+        setIsOnboarding(false);
+        setActivities((prev) =>
+          prev.length > 0
+            ? prev
+            : [createWelcomeActivity(parsedProfile), ...MOCK_ACTIVITIES]
+        );
+      } catch (error) {
+        console.error("Failed to restore onboarding state", error);
+        window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
+        window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || userProfile) {
+      return;
+    }
+
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch("/api/user/profile", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load profile");
+        }
+
+        const data = await response.json();
+        const user = data.user;
+
+        if (!user || !user.focuses || user.focuses.length === 0) {
+          setIsOnboarding(true);
+          return;
+        }
+
+        const normalizedProfile: UserProfile = {
+          username: user.username,
+          name: user.name ?? "",
+          avatar:
+            user.image ??
+            "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+          tagline: user.tagline ?? "",
+          projects: Array.isArray(user.projects)
+            ? user.projects.join(", ")
+            : user.projects ?? "",
+          focuses: user.focuses,
+          connections: user.connections ?? [],
+          socials: user.socials,
+        };
+
+        setUserProfile(normalizedProfile);
+        setIsOnboarding(false);
+
+        const hasStoredProfile =
+          typeof window !== "undefined" &&
+          window.localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+
+        if (!hasStoredProfile && typeof window !== "undefined") {
+          window.localStorage.setItem(
+            USER_PROFILE_STORAGE_KEY,
+            JSON.stringify(normalizedProfile)
+          );
+          window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
+        }
+
+        if (activities.length === 0) {
+          setActivities([
+            createWelcomeActivity(normalizedProfile),
+            ...MOCK_ACTIVITIES,
+          ]);
+        }
+      } catch (error) {
+        console.error("Error loading user profile", error);
+        setIsOnboarding(true);
+      }
     };
 
+    fetchUserProfile();
+  }, [sessionStatus, userProfile, activities.length]);
+
+  const handleCompleteOnboarding = (profile: UserProfile) => {
+    setUserProfile(profile);
+    const welcomeActivity = createWelcomeActivity(profile);
     setActivities([welcomeActivity, ...MOCK_ACTIVITIES]);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        USER_PROFILE_STORAGE_KEY,
+        JSON.stringify(profile)
+      );
+      window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
+    }
 
     setIsOnboarding(false);
     setIsPreparingWorkspace(true);

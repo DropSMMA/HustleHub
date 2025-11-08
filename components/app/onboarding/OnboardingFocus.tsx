@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { FocusArea } from '@/app/types';
 
 interface FocusProps {
     onBack: () => void;
-    onFinish: (focuses: FocusArea[]) => void;
+    onFinish: (focuses: FocusArea[]) => Promise<void>;
+    isSubmitting: boolean;
 }
 
 const allFocuses = Object.values(FocusArea);
 
-const OnboardingFocus: React.FC<FocusProps> = ({ onBack, onFinish }) => {
+const OnboardingFocus: React.FC<FocusProps> = ({ onBack, onFinish, isSubmitting }) => {
     const [selectedFocuses, setSelectedFocuses] = useState<FocusArea[]>([]);
 
     const toggleFocus = (focus: FocusArea) => {
@@ -19,12 +21,12 @@ const OnboardingFocus: React.FC<FocusProps> = ({ onBack, onFinish }) => {
         );
     };
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
         if (selectedFocuses.length === 0) {
-            alert('Please select at least one focus area.');
+            toast.error('Please select at least one focus area.');
             return;
         }
-        onFinish(selectedFocuses);
+        await onFinish(selectedFocuses);
     };
 
     return (
@@ -57,8 +59,13 @@ const OnboardingFocus: React.FC<FocusProps> = ({ onBack, onFinish }) => {
                 <button type="button" onClick={onBack} className="w-full flex justify-center py-3 px-4 border border-brand-tertiary rounded-md shadow-sm text-sm font-bold text-gray-300 bg-brand-tertiary hover:bg-opacity-80 transition-all duration-200">
                     Back
                 </button>
-                <button type="button" onClick={handleFinish} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-brand-primary bg-brand-neon hover:bg-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-brand-neon transition-all duration-200">
-                    Finish
+                <button
+                    type="button"
+                    onClick={handleFinish}
+                    disabled={isSubmitting}
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-brand-primary bg-brand-neon hover:bg-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-brand-neon transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                    {isSubmitting ? 'Saving...' : 'Finish'}
                 </button>
             </div>
         </div>

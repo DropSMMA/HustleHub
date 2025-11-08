@@ -1,5 +1,6 @@
 import React, { useState, ChangeEvent } from 'react';
-import { UserProfile } from '@/app/types';
+import { toast } from 'react-hot-toast';
+import type { UserProfile } from '@/app/types';
 import { CameraIcon } from '../icons/CameraIcon';
 
 interface Step2Props {
@@ -28,7 +29,7 @@ const OnboardingStep2: React.FC<Step2Props> = ({ onNext, onBack, initialData }) 
 
     const handleNext = () => {
         if (!data.name) {
-            alert('Please enter your name or a handle.');
+            toast.error('Please enter your name or a handle.');
             return;
         }
         onNext({

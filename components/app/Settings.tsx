@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { signOut } from "next-auth/react";
 import { UserProfile } from "@/app/types";
 import { BackIcon } from "./icons/BackIcon";
 import ConfirmationModal from "./ConfirmationModal";
@@ -47,6 +48,7 @@ const Settings: React.FC<SettingsProps> = ({
     connections: true,
   });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (!userProfile) return null;
 
@@ -62,6 +64,15 @@ const Settings: React.FC<SettingsProps> = ({
     console.log("Account deletion initiated.");
     setIsDeleteModalOpen(false);
     // Maybe log out and redirect
+  };
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut({ callbackUrl: "/" });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -127,8 +138,12 @@ const Settings: React.FC<SettingsProps> = ({
 
         {/* Account Actions Section */}
         <div className="space-y-3 pt-4">
-          <button className="w-full text-center bg-brand-secondary hover:bg-brand-tertiary text-gray-300 font-bold py-3 px-4 rounded-lg transition-colors">
-            Log Out
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full text-center bg-brand-secondary hover:bg-brand-tertiary text-gray-300 font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isLoggingOut ? "Logging out..." : "Log Out"}
           </button>
           <button
             onClick={() => setIsDeleteModalOpen(true)}

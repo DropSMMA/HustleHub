@@ -11,10 +11,10 @@ interface ActivityCardProps {
     activity: Activity;
     isCommentSectionOpen: boolean;
     onToggleComments: () => void;
-    onAddComment: (activityId: number, commentText: string) => void;
-    onAddReply: (activityId: number, parentCommentId: number, replyText: string) => void;
+    onAddComment: (activityId: string, commentText: string) => void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
     onViewProfile: (username: string) => void;
-    onDelete?: (activityId: number) => void;
+    onDelete?: (activityId: string) => void;
     currentUser: UserProfile | null;
     isHighlighted?: boolean;
 }

@@ -7,7 +7,7 @@ export enum ActivityType {
 }
 
 export interface Comment {
-  id: number;
+  id: string;
   user: string;
   avatar: string;
   text: string;
@@ -15,7 +15,7 @@ export interface Comment {
 }
 
 export interface Activity {
-  id: number;
+  id: string;
   user: string;
   username: string;
   avatar: string;
@@ -87,7 +87,7 @@ export interface Notification {
     message: string;
     timestamp: string;
     read: boolean;
-    postId?: number;
+    postId?: string;
     actor: {
         name: string;
         avatar: string;

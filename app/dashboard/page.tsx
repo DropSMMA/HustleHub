@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import {
   Activity,
@@ -14,6 +15,8 @@ import {
   Challenge,
   UserChallenge,
 } from "@/app/types";
+import apiClient from "@/libs/api";
+import { mapPostsToActivities, PostDTO } from "@/libs/posts";
 import Header from "@/components/app/Header";
 import BottomNav from "@/components/app/BottomNav";
 import Feed from "@/components/app/Feed";
@@ -35,7 +38,7 @@ const USER_PROFILE_STORAGE_KEY = "hustlehub:userProfile";
 const ONBOARDING_COMPLETE_STORAGE_KEY = "hustlehub:onboardingComplete";
 
 const createWelcomeActivity = (profile: UserProfile): Activity => ({
-  id: Date.now() + 1,
+  id: `${Date.now() + 1}`,
   user: profile.name,
   username: profile.username,
   avatar: profile.avatar,
@@ -99,7 +102,7 @@ const MOCK_USER_PROFILES: Record<string, UserProfile> = {
 
 const MOCK_ACTIVITIES: Activity[] = [
   {
-    id: 1,
+    id: "1",
     user: "Alex Devito",
     username: "alexdevito",
     avatar: "https://i.pravatar.cc/150?u=alexdevito",
@@ -111,13 +114,13 @@ const MOCK_ACTIVITIES: Activity[] = [
     kudos: 128,
     comments: [
       {
-        id: 1,
+        id: "1",
         user: "Jenna Miles",
         avatar: "https://i.pravatar.cc/150?u=jennamiles",
         text: "Congrats on the launch! 🔥",
         replies: [
           {
-            id: 101,
+            id: "101",
             user: "Alex Devito",
             avatar: "https://i.pravatar.cc/150?u=alexdevito",
             text: "Thanks Jenna! Appreciate the support.",
@@ -125,7 +128,7 @@ const MOCK_ACTIVITIES: Activity[] = [
         ],
       },
       {
-        id: 2,
+        id: "2",
         user: "Samurai Sam",
         avatar: "https://i.pravatar.cc/150?u=samuraisam",
         text: "This is huge! Well done.",
@@ -134,7 +137,7 @@ const MOCK_ACTIVITIES: Activity[] = [
     timestamp: "2h ago",
   },
   {
-    id: 2,
+    id: "2",
     user: "Jenna Miles",
     username: "jennamiles",
     avatar: "https://i.pravatar.cc/150?u=jennamiles",
@@ -146,7 +149,7 @@ const MOCK_ACTIVITIES: Activity[] = [
     kudos: 95,
     comments: [
       {
-        id: 3,
+        id: "3",
         user: "Alex Devito",
         avatar: "https://i.pravatar.cc/150?u=alexdevito",
         text: "Love this! So important.",
@@ -155,7 +158,7 @@ const MOCK_ACTIVITIES: Activity[] = [
     timestamp: "5h ago",
   },
   {
-    id: 3,
+    id: "3",
     user: "Samurai Sam",
     username: "samuraisam",
     avatar: "https://i.pravatar.cc/150?u=samuraisam",
@@ -169,12 +172,19 @@ const MOCK_ACTIVITIES: Activity[] = [
   },
 ];
 
+const generateLocalId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const DEFAULT_POST_LIMIT = 20;
+
 const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: 1,
     type: NotificationType.Kudo,
     message: "gave you kudos on your <strong>Deep Work</strong> session.",
-    postId: 1,
+    postId: "1",
     timestamp: "1h ago",
     read: false,
     actor: {
@@ -188,7 +198,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
     type: NotificationType.Comment,
     message:
       'commented on your <strong>Deep Work</strong> session: "This is huge! Well done."',
-    postId: 1,
+    postId: "1",
     timestamp: "2h ago",
     read: false,
     actor: {
@@ -220,6 +230,10 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   },
 ];
 
+type FetchPostsOptions = {
+  cursor?: string | null;
+  replace?: boolean;
+};
 const MOCK_CHALLENGES: Challenge[] = [
   {
     id: "mvp-30-day",
@@ -277,11 +291,62 @@ const App: React.FC = () => {
   const [challenges, setChallenges] = useState<Challenge[]>(MOCK_CHALLENGES);
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
   const [pendingConnections, setPendingConnections] = useState<string[]>([]);
-  const [highlightedPostId, setHighlightedPostId] = useState<number | null>(
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(
     null
   );
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [postsCursor, setPostsCursor] = useState<string | null>(null);
+  const [hasLoadedPosts, setHasLoadedPosts] = useState(false);
+
+  const fetchPosts = useCallback(
+    async ({ cursor, replace = false }: FetchPostsOptions = {}) => {
+      const params: Record<string, string> = {
+        limit: DEFAULT_POST_LIMIT.toString(),
+      };
+      if (cursor) {
+        params.cursor = cursor;
+      }
+
+      try {
+        if (cursor) {
+          setIsLoadingMore(true);
+        }
+
+        const { posts, nextCursor } = (await apiClient.get("/posts", {
+          params,
+        })) as { posts: PostDTO[]; nextCursor: string | null };
+
+        const mappedActivities = mapPostsToActivities(posts);
+
+        if (replace) {
+          setActivities(mappedActivities);
+        } else if (cursor) {
+          setActivities((prev) => {
+            const existingIds = new Set(prev.map((activity) => activity.id));
+            const filtered = mappedActivities.filter(
+              (activity) => !existingIds.has(activity.id)
+            );
+            return [...prev, ...filtered];
+          });
+        } else {
+          setActivities(mappedActivities);
+        }
+
+        setPostsCursor(nextCursor ?? null);
+
+        return mappedActivities;
+      } catch (error) {
+        console.error("Failed to load posts", error);
+        return [];
+      } finally {
+        if (cursor) {
+          setIsLoadingMore(false);
+        }
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -298,11 +363,6 @@ const App: React.FC = () => {
         const parsedProfile = JSON.parse(storedProfile) as UserProfile;
         setUserProfile(parsedProfile);
         setIsOnboarding(false);
-        setActivities((prev) =>
-          prev.length > 0
-            ? prev
-            : [createWelcomeActivity(parsedProfile), ...MOCK_ACTIVITIES]
-        );
       } catch (error) {
         console.error("Failed to restore onboarding state", error);
         window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
@@ -367,13 +427,6 @@ const App: React.FC = () => {
           );
           window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
         }
-
-        if (activities.length === 0) {
-          setActivities([
-            createWelcomeActivity(normalizedProfile),
-            ...MOCK_ACTIVITIES,
-          ]);
-        }
       } catch (error) {
         console.error("Error loading user profile", error);
         setIsOnboarding(true);
@@ -381,7 +434,27 @@ const App: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, [sessionStatus, userProfile, activities.length]);
+  }, [sessionStatus, userProfile]);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || !userProfile || hasLoadedPosts) {
+      return;
+    }
+
+    const loadPosts = async () => {
+      const posts = await fetchPosts({ replace: true });
+      if ((posts?.length ?? 0) === 0) {
+        setActivities((prev) =>
+          prev.length > 0
+            ? prev
+            : [createWelcomeActivity(userProfile), ...MOCK_ACTIVITIES]
+        );
+      }
+      setHasLoadedPosts(true);
+    };
+
+    loadPosts();
+  }, [sessionStatus, userProfile, hasLoadedPosts, fetchPosts]);
 
   const handleCompleteOnboarding = (profile: UserProfile) => {
     setUserProfile(profile);
@@ -409,21 +482,8 @@ const App: React.FC = () => {
     }
   }, [isPreparingWorkspace]);
 
-  const handleLogActivity = (
-    newActivity: Omit<
-      Activity,
-      "id" | "kudos" | "comments" | "timestamp" | "username"
-    >
-  ) => {
-    const activityToAdd: Activity = {
-      ...newActivity,
-      id: Date.now(),
-      username: userProfile?.username || "currentUser",
-      kudos: 0,
-      comments: [],
-      timestamp: "Just now",
-    };
-    setActivities((prev) => [activityToAdd, ...prev]);
+  const handleLogActivity = (activity: Activity) => {
+    setActivities((prev) => [activity, ...prev]);
 
     // --- Challenge Progress Logic ---
     setUserChallenges((prevUserChallenges) =>
@@ -431,7 +491,7 @@ const App: React.FC = () => {
         const challenge = challenges.find((c) => c.id === uc.challengeId);
         if (
           !challenge ||
-          challenge.type !== activityToAdd.type ||
+          challenge.type !== activity.type ||
           uc.progress >= challenge.goal
         ) {
           return uc;
@@ -490,12 +550,12 @@ const App: React.FC = () => {
     });
   };
 
-  const handleAddComment = (activityId: number, commentText: string) => {
+  const handleAddComment = (activityId: string, commentText: string) => {
     const updateActivities = (prevActivities: Activity[]) =>
       prevActivities.map((activity) => {
         if (activity.id === activityId) {
           const newComment: Comment = {
-            id: Date.now(),
+            id: generateLocalId(),
             user: userProfile?.name || "You",
             avatar:
               userProfile?.avatar || "https://i.pravatar.cc/150?u=currentuser",
@@ -513,8 +573,8 @@ const App: React.FC = () => {
   };
 
   const handleAddReply = (
-    activityId: number,
-    parentCommentId: number,
+    activityId: string,
+    parentCommentId: string,
     replyText: string
   ) => {
     setActivities((prevActivities) =>
@@ -523,7 +583,7 @@ const App: React.FC = () => {
           const updatedComments = activity.comments.map((comment: Comment) => {
             if (comment.id === parentCommentId) {
               const newReply: Comment = {
-                id: Date.now(),
+                id: generateLocalId(),
                 user: userProfile?.name || "You",
                 avatar:
                   userProfile?.avatar ||
@@ -556,7 +616,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleViewActivity = (postId: number) => {
+  const handleViewActivity = (postId: string) => {
     setCurrentView("feed");
     setHighlightedPostId(postId);
   };
@@ -647,10 +707,25 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteActivity = (activityId: number) => {
+  const handleDeleteActivity = async (activityId: string) => {
+    const previousActivities = activities;
     setActivities((prev) =>
       prev.filter((activity) => activity.id !== activityId)
     );
+
+    const isMongoObjectId = /^[0-9a-fA-F]{24}$/.test(activityId);
+
+    if (!isMongoObjectId) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/posts/${activityId}`);
+    } catch (error) {
+      console.error("Failed to delete activity", error);
+      toast.error("Unable to delete this post. Please try again.");
+      setActivities(previousActivities);
+    }
   };
 
   const handleSendConnectRequest = (targetUsername: string) => {
@@ -659,36 +734,16 @@ const App: React.FC = () => {
     console.log(`Connection request sent to ${targetUsername}`);
   };
 
-  const handleLoadMoreActivities = useCallback(() => {
-    if (isLoadingMore) return;
-    setIsLoadingMore(true);
-    setTimeout(() => {
-      const moreActivities = MOCK_ACTIVITIES.map((a) => ({
-        ...a,
-        id: a.id + Date.now() + Math.random(), // Make IDs unique
-        timestamp: `${Math.floor(Math.random() * 48) + 8}h ago`,
-      })).reverse();
-      setActivities((prev) => [...prev, ...moreActivities]);
-      setIsLoadingMore(false);
-    }, 1500);
-  }, [isLoadingMore]);
+  const handleLoadMoreActivities = useCallback(async () => {
+    if (isLoadingMore || !postsCursor) {
+      return;
+    }
+    await fetchPosts({ cursor: postsCursor });
+  }, [fetchPosts, isLoadingMore, postsCursor]);
 
   const handleRefresh = useCallback(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const newActivity: Activity = {
-      id: Date.now(),
-      user: "Jenna Miles",
-      username: "jennamiles",
-      avatar: "https://i.pravatar.cc/150?u=jennamiles",
-      type: ActivityType.Networking,
-      description: `Just had a great coffee chat with a fellow founder. So much energy in this community!`,
-      stats: "1h coffee chat",
-      kudos: 0,
-      comments: [],
-      timestamp: "Just now",
-    };
-    setActivities((prev) => [newActivity, ...prev]);
-  }, []);
+    await fetchPosts({ replace: true });
+  }, [fetchPosts]);
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
@@ -855,7 +910,7 @@ const App: React.FC = () => {
       <LogActivity
         isOpen={isLogModalOpen}
         onClose={() => setIsLogModalOpen(false)}
-        onLogActivity={handleLogActivity}
+        onPostCreated={handleLogActivity}
         userProfile={userProfile}
       />
     </div>

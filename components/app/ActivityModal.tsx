@@ -7,10 +7,10 @@ interface ActivityModalProps {
     activity: Activity;
     currentUser: UserProfile | null;
     onClose: () => void;
-    onAddComment: (activityId: number, commentText: string) => void;
-    onAddReply: (activityId: number, parentCommentId: number, replyText: string) => void;
+    onAddComment: (activityId: string, commentText: string) => void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
     onViewProfile: (username: string) => void;
-    onDeleteActivity: (activityId: number) => void;
+    onDeleteActivity: (activityId: string) => void;
 }
 
 const ActivityModal: React.FC<ActivityModalProps> = ({

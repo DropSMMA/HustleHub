@@ -12,7 +12,7 @@ interface NotificationsProps {
     onAcceptConnectRequest: (notificationId: number, fromUsername: string) => void;
     onDeclineConnectRequest: (notificationId: number) => void;
     onViewProfile: (username: string) => void;
-    onViewActivity: (postId: number) => void;
+    onViewActivity: (postId: string) => void;
 }
 
 const NotificationIcon: React.FC<{ type: NotificationType }> = ({ type }) => {

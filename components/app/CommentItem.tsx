@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Comment, UserProfile } from '@/app/types';
 
 interface CommentItemProps {
-    activityId: number;
+    activityId: string;
     comment: Comment;
-    onAddReply: (activityId: number, parentCommentId: number, replyText: string) => void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
     currentUser: UserProfile | null;
 }
 

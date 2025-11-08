@@ -17,11 +17,11 @@ interface ProfileProps {
   onUpdateProfile: (profile: UserProfile) => void;
   onViewConnections: (username: string) => void;
   activities: Activity[];
-  onDeleteActivity: (activityId: number) => void;
-  onAddComment: (activityId: number, commentText: string) => void;
+  onDeleteActivity: (activityId: string) => void;
+  onAddComment: (activityId: string, commentText: string) => void;
   onAddReply: (
-    activityId: number,
-    parentCommentId: number,
+    activityId: string,
+    parentCommentId: string,
     replyText: string
   ) => void;
   onViewProfile: (username: string) => void;
@@ -88,11 +88,11 @@ const Profile: React.FC<ProfileProps> = ({
     userProfile
   );
   const [openCommentSectionId, setOpenCommentSectionId] = useState<
-    number | null
+    string | null
   >(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const toggleComments = (activityId: number) => {
+  const toggleComments = (activityId: string) => {
     setOpenCommentSectionId((prevId) =>
       prevId === activityId ? null : activityId
     );

@@ -5,12 +5,12 @@ import { ArrowDownIcon } from './icons/ArrowDownIcon';
 
 interface FeedProps {
     activities: Activity[];
-    onAddComment: (activityId: number, commentText: string) => void;
-    onAddReply: (activityId: number, parentCommentId: number, replyText: string) => void;
+    onAddComment: (activityId: string, commentText: string) => void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
     onViewProfile: (username: string) => void;
-    onDeleteActivity: (activityId: number) => void;
+    onDeleteActivity: (activityId: string) => void;
     currentUser: UserProfile | null;
-    highlightedPostId?: number | null;
+    highlightedPostId?: string | null;
     onClearHighlight?: () => void;
     onRefresh?: () => Promise<void>;
     onLoadMore?: () => void;
@@ -30,7 +30,7 @@ const Feed: React.FC<FeedProps> = ({
     onLoadMore,
     isLoadingMore = false
 }) => {
-    const [openCommentSectionId, setOpenCommentSectionId] = useState<number | null>(null);
+    const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
     const [pullStart, setPullStart] = useState<number>(0);
     const [pullDistance, setPullDistance] = useState<number>(0);
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -66,7 +66,7 @@ const Feed: React.FC<FeedProps> = ({
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isLoadingMore, onLoadMore]);
 
-    const toggleComments = (activityId: number) => {
+    const toggleComments = (activityId: string) => {
         setOpenCommentSectionId(prevId => (prevId === activityId ? null : activityId));
     };
 

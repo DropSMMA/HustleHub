@@ -1,5 +1,7 @@
 import React, { useState, useEffect, ChangeEvent } from "react";
+import { toast } from "react-hot-toast";
 import { UserProfile, FocusArea, Activity, View } from "@/app/types";
+import apiClient from "@/libs/api";
 import { PenIcon } from "./icons/PenIcon";
 import { CameraIcon } from "./icons/CameraIcon";
 import ActivityCard from "./ActivityCard";
@@ -38,6 +40,38 @@ const StatCard: React.FC<{ value: string; label: string }> = ({
 
 const allFocuses = Object.values(FocusArea);
 
+const FALLBACK_AVATAR =
+  "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
+
+interface ApiUserSocials {
+  twitter?: string;
+  github?: string;
+  linkedin?: string;
+  website?: string;
+}
+
+interface ApiUser {
+  username: string;
+  name?: string;
+  image?: string;
+  tagline?: string;
+  projects?: string[];
+  focuses?: FocusArea[];
+  connections?: string[];
+  socials?: ApiUserSocials;
+}
+
+const mapApiUserToProfile = (user: ApiUser): UserProfile => ({
+  username: user.username,
+  name: user.name ?? "",
+  avatar: user.image ?? FALLBACK_AVATAR,
+  tagline: user.tagline ?? "",
+  projects: Array.isArray(user.projects) ? user.projects.join(", ") : "",
+  focuses: user.focuses ?? [],
+  connections: user.connections ?? [],
+  socials: user.socials,
+});
+
 const Profile: React.FC<ProfileProps> = ({
   userProfile,
   onUpdateProfile,
@@ -56,6 +90,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [openCommentSectionId, setOpenCommentSectionId] = useState<
     number | null
   >(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const toggleComments = (activityId: number) => {
     setOpenCommentSectionId((prevId) =>
@@ -111,6 +146,10 @@ const Profile: React.FC<ProfileProps> = ({
   const toggleFocus = (focus: FocusArea) => {
     if (editedProfile) {
       const currentFocuses = editedProfile.focuses || [];
+      if (!currentFocuses.includes(focus) && currentFocuses.length >= 3) {
+        toast.error("You can select up to three focus areas.");
+        return;
+      }
       const newFocuses = currentFocuses.includes(focus)
         ? currentFocuses.filter((f) => f !== focus)
         : [...currentFocuses, focus];
@@ -118,15 +157,80 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  const handleSave = () => {
-    if (editedProfile) {
-      onUpdateProfile(editedProfile);
+  const handleSave = async () => {
+    if (!editedProfile) {
+      return;
     }
-    setIsEditing(false);
+
+    if (isSaving) {
+      return;
+    }
+
+    const trimmedName = editedProfile.name.trim();
+
+    if (trimmedName.length === 0) {
+      toast.error("Name is required.");
+      return;
+    }
+
+    if (!editedProfile.focuses || editedProfile.focuses.length === 0) {
+      toast.error("Select at least one focus area.");
+      return;
+    }
+
+    if (editedProfile.focuses.length > 3) {
+      toast.error("You can select up to three focus areas.");
+      return;
+    }
+
+    const projectsArray = editedProfile.projects
+      ? editedProfile.projects
+          .split(",")
+          .map((project) => project.trim())
+          .filter(Boolean)
+      : [];
+
+    const socialsPayload = editedProfile.socials
+      ? Object.entries(editedProfile.socials).reduce<Record<string, string>>(
+          (acc, [key, value]) => {
+            acc[key] = typeof value === "string" ? value.trim() : "";
+            return acc;
+          },
+          {}
+        )
+      : undefined;
+
+    const payload = {
+      name: trimmedName,
+      tagline: editedProfile.tagline?.trim() ?? "",
+      avatar: editedProfile.avatar,
+      focuses: editedProfile.focuses,
+      projects: projectsArray,
+      socials: socialsPayload,
+    };
+
+    setIsSaving(true);
+
+    try {
+      const { user } = (await apiClient.patch("/user/profile", payload)) as {
+        user: ApiUser;
+      };
+
+      const normalizedProfile = mapApiUserToProfile(user);
+      onUpdateProfile(normalizedProfile);
+      setEditedProfile(normalizedProfile);
+      setIsEditing(false);
+      toast.success("Profile updated.");
+    } catch (error) {
+      console.error("Failed to update profile", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
+    setEditedProfile(userProfile);
   };
 
   const socials = userProfile.socials;
@@ -414,9 +518,10 @@ const Profile: React.FC<ProfileProps> = ({
           </button>
           <button
             onClick={handleSave}
-            className="w-full text-center bg-brand-neon hover:bg-green-400 text-brand-primary font-bold py-3 px-4 rounded-lg transition-colors"
+            disabled={isSaving}
+            className="w-full text-center bg-brand-neon hover:bg-green-400 disabled:hover:bg-brand-neon/80 disabled:opacity-60 disabled:cursor-not-allowed text-brand-primary font-bold py-3 px-4 rounded-lg transition-colors"
           >
-            Save Changes
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       ) : (

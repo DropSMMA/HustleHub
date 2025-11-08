@@ -593,6 +593,13 @@ const App: React.FC = () => {
     if (updatedProfile.username) {
       MOCK_USER_PROFILES[updatedProfile.username] = updatedProfile;
     }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        USER_PROFILE_STORAGE_KEY,
+        JSON.stringify(updatedProfile)
+      );
+    }
   };
 
   const handleAcceptConnectRequest = (

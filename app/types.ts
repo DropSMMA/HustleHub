@@ -24,6 +24,8 @@ export interface Activity {
   stats: string;
   image?: string;
   kudos: number;
+  likedByCurrentUser?: boolean;
+  likedBy?: string[];
   comments: Comment[];
   timestamp: string;
 }

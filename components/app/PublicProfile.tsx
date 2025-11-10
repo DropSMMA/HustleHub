@@ -16,8 +16,9 @@ interface PublicProfileProps {
     onViewConnections: (username: string) => void;
     onConnect: (username:string) => void;
     pendingConnections: string[];
-    onAddComment: (activityId: string, commentText: string) => void;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
+    onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
+    onToggleLike: (activityId: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
     onViewProfile: (username: string) => void;
 }
@@ -29,7 +30,7 @@ const StatCard: React.FC<{ value: string; label: string }> = ({ value, label }) 
     </div>
 );
 
-const PublicProfile: React.FC<PublicProfileProps> = ({ user, currentUser, activities, onBack, onViewConnections, onConnect, pendingConnections, onAddComment, onAddReply, onDeleteActivity, onViewProfile }) => {
+const PublicProfile: React.FC<PublicProfileProps> = ({ user, currentUser, activities, onBack, onViewConnections, onConnect, pendingConnections, onAddComment, onAddReply, onToggleLike, onDeleteActivity, onViewProfile }) => {
     const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
 
     const toggleComments = (activityId: string) => {
@@ -148,6 +149,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({ user, currentUser, activi
                                 onAddComment={onAddComment}
                                 onAddReply={onAddReply}
                                 onViewProfile={onViewProfile}
+                                onToggleLike={onToggleLike}
                                 onDelete={onDeleteActivity}
                                 currentUser={currentUser}
                             />

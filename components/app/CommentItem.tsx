@@ -4,21 +4,32 @@ import { Comment, UserProfile } from '@/app/types';
 interface CommentItemProps {
     activityId: string;
     comment: Comment;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
     currentUser: UserProfile | null;
 }
 
 const CommentItem: React.FC<CommentItemProps> = ({ activityId, comment, onAddReply, currentUser }) => {
     const [isReplying, setIsReplying] = useState(false);
     const [replyText, setReplyText] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     const currentUserAvatar = currentUser?.avatar || 'https://i.pravatar.cc/150?u=currentuser';
 
-    const handlePostReply = () => {
-        if (replyText.trim()) {
-            onAddReply(activityId, comment.id, replyText);
+    const handlePostReply = async () => {
+        const trimmed = replyText.trim();
+        if (!trimmed || isSubmitting) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await onAddReply(activityId, comment.id, trimmed);
             setReplyText('');
             setIsReplying(false);
+        } catch (error) {
+            console.error("Failed to submit reply", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -65,7 +76,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ activityId, comment, onAddRep
                             </button>
                             <button 
                                 onClick={handlePostReply}
-                                disabled={!replyText.trim()}
+                                disabled={!replyText.trim() || isSubmitting}
                                 className="bg-brand-neon text-brand-primary text-xs font-bold py-1 px-3 rounded-md hover:bg-green-400 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
                                 Post Reply
                             </button>

@@ -5,8 +5,9 @@ import { ArrowDownIcon } from './icons/ArrowDownIcon';
 
 interface FeedProps {
     activities: Activity[];
-    onAddComment: (activityId: string, commentText: string) => void;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
+    onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
+    onToggleLike: (activityId: string) => Promise<void> | void;
     onViewProfile: (username: string) => void;
     onDeleteActivity: (activityId: string) => void;
     currentUser: UserProfile | null;
@@ -21,6 +22,7 @@ const Feed: React.FC<FeedProps> = ({
     activities, 
     onAddComment, 
     onAddReply, 
+    onToggleLike,
     onViewProfile, 
     onDeleteActivity, 
     currentUser, 
@@ -138,6 +140,7 @@ const Feed: React.FC<FeedProps> = ({
                         onAddComment={onAddComment}
                         onAddReply={onAddReply}
                         onViewProfile={onViewProfile}
+                        onToggleLike={onToggleLike}
                         onDelete={onDeleteActivity}
                         currentUser={currentUser}
                         isHighlighted={activity.id === highlightedPostId}

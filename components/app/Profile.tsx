@@ -18,12 +18,16 @@ interface ProfileProps {
   onViewConnections: (username: string) => void;
   activities: Activity[];
   onDeleteActivity: (activityId: string) => void;
-  onAddComment: (activityId: string, commentText: string) => void;
+  onAddComment: (
+    activityId: string,
+    commentText: string
+  ) => Promise<void> | void;
   onAddReply: (
     activityId: string,
     parentCommentId: string,
     replyText: string
-  ) => void;
+  ) => Promise<void> | void;
+  onToggleLike: (activityId: string) => Promise<void> | void;
   onViewProfile: (username: string) => void;
   setCurrentView: (view: View) => void;
 }
@@ -80,6 +84,7 @@ const Profile: React.FC<ProfileProps> = ({
   onDeleteActivity,
   onAddComment,
   onAddReply,
+  onToggleLike,
   onViewProfile,
   setCurrentView,
 }) => {
@@ -495,6 +500,7 @@ const Profile: React.FC<ProfileProps> = ({
                 onAddComment={onAddComment}
                 onAddReply={onAddReply}
                 onViewProfile={onViewProfile}
+                onToggleLike={onToggleLike}
                 onDelete={onDeleteActivity}
                 currentUser={userProfile}
               />

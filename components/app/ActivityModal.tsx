@@ -7,9 +7,10 @@ interface ActivityModalProps {
     activity: Activity;
     currentUser: UserProfile | null;
     onClose: () => void;
-    onAddComment: (activityId: string, commentText: string) => void;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => void;
+    onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
+    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
     onViewProfile: (username: string) => void;
+    onToggleLike: (activityId: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
 }
 
@@ -20,6 +21,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
     onAddComment,
     onAddReply,
     onViewProfile,
+    onToggleLike,
     onDeleteActivity
 }) => {
     const [isCommentSectionOpen, setIsCommentSectionOpen] = useState(true);
@@ -46,6 +48,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
                         onAddComment={onAddComment}
                         onAddReply={onAddReply}
                         onViewProfile={onViewProfile}
+                        onToggleLike={onToggleLike}
                         onDelete={onDeleteActivity}
                         currentUser={currentUser}
                     />

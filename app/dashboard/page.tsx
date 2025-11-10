@@ -48,6 +48,8 @@ const createWelcomeActivity = (profile: UserProfile): Activity => ({
   )}. Let's go! 🚀`,
   stats: "Joined the community",
   kudos: 0,
+  likedByCurrentUser: false,
+  likedBy: [],
   comments: [],
   timestamp: "Just now",
 });
@@ -176,6 +178,11 @@ const generateLocalId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const isMongoObjectId = (value: string) => /^[0-9a-fA-F]{24}$/.test(value);
+
+const DEFAULT_AVATAR =
+  "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 
 const DEFAULT_POST_LIMIT = 20;
 
@@ -483,7 +490,13 @@ const App: React.FC = () => {
   }, [isPreparingWorkspace]);
 
   const handleLogActivity = (activity: Activity) => {
-    setActivities((prev) => [activity, ...prev]);
+    const normalizedActivity: Activity = {
+      ...activity,
+      likedBy: activity.likedBy ?? [],
+      likedByCurrentUser: activity.likedByCurrentUser ?? false,
+    };
+
+    setActivities((prev) => [normalizedActivity, ...prev]);
 
     // --- Challenge Progress Logic ---
     setUserChallenges((prevUserChallenges) =>
@@ -550,58 +563,224 @@ const App: React.FC = () => {
     });
   };
 
-  const handleAddComment = (activityId: string, commentText: string) => {
-    const updateActivities = (prevActivities: Activity[]) =>
-      prevActivities.map((activity) => {
-        if (activity.id === activityId) {
-          const newComment: Comment = {
-            id: generateLocalId(),
-            user: userProfile?.name || "You",
-            avatar:
-              userProfile?.avatar || "https://i.pravatar.cc/150?u=currentuser",
-            text: commentText,
-          };
-          return {
-            ...activity,
-            comments: [...activity.comments, newComment],
-          };
-        }
-        return activity;
-      });
+  const handleAddComment = async (activityId: string, commentText: string) => {
+    const trimmed = commentText.trim();
+    if (!trimmed) {
+      return;
+    }
 
-    setActivities(updateActivities);
+    if (!userProfile) {
+      toast.error("Complete your profile to comment.");
+      return;
+    }
+
+    if (!isMongoObjectId(activityId)) {
+      const newComment: Comment = {
+        id: generateLocalId(),
+        user: userProfile.name || "You",
+        avatar: userProfile.avatar || DEFAULT_AVATAR,
+        text: trimmed,
+        replies: [],
+      };
+      setActivities((prevActivities) =>
+        prevActivities.map((activity) =>
+          activity.id === activityId
+            ? {
+                ...activity,
+                comments: [...activity.comments, newComment],
+              }
+            : activity
+        )
+      );
+      return;
+    }
+
+    const previousActivities = activities;
+
+    try {
+      const { comment } = (await apiClient.post(
+        `/posts/${activityId}/comments`,
+        { text: trimmed }
+      )) as { comment: Comment };
+
+      const hydratedComment: Comment = {
+        ...comment,
+        replies: comment.replies ?? [],
+      };
+
+      setActivities((prevActivities) =>
+        prevActivities.map((activity) =>
+          activity.id === activityId
+            ? {
+                ...activity,
+                comments: [...activity.comments, hydratedComment],
+              }
+            : activity
+        )
+      );
+    } catch (error) {
+      console.error("Failed to add comment", error);
+      toast.error("Unable to add comment. Please try again.");
+      setActivities(previousActivities);
+      throw error;
+    }
   };
 
-  const handleAddReply = (
+  const handleAddReply = async (
     activityId: string,
     parentCommentId: string,
     replyText: string
   ) => {
+    const trimmed = replyText.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    if (!userProfile) {
+      toast.error("Complete your profile to reply.");
+      return;
+    }
+
+    if (!isMongoObjectId(activityId)) {
+      const newReply: Comment = {
+        id: generateLocalId(),
+        user: userProfile.name || "You",
+        avatar: userProfile.avatar || DEFAULT_AVATAR,
+        text: trimmed,
+      };
+
+      setActivities((prevActivities) =>
+        prevActivities.map((activity) => {
+          if (activity.id !== activityId) {
+            return activity;
+          }
+
+          const updatedComments = activity.comments.map((comment) => {
+            if (comment.id !== parentCommentId) {
+              return comment;
+            }
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), newReply],
+            };
+          });
+
+          return {
+            ...activity,
+            comments: updatedComments,
+          };
+        })
+      );
+      return;
+    }
+
+    const previousActivities = activities;
+
+    try {
+      const { comment } = (await apiClient.post(
+        `/posts/${activityId}/comments`,
+        { text: trimmed, parentId: parentCommentId }
+      )) as { comment: Comment };
+
+      setActivities((prevActivities) =>
+        prevActivities.map((activity) => {
+          if (activity.id !== activityId) {
+            return activity;
+          }
+
+          const updatedComments = activity.comments.map((existing) => {
+            if (existing.id !== parentCommentId) {
+              return existing;
+            }
+            return {
+              ...existing,
+              replies: [...(existing.replies || []), comment],
+            };
+          });
+
+          return {
+            ...activity,
+            comments: updatedComments,
+          };
+        })
+      );
+    } catch (error) {
+      console.error("Failed to add reply", error);
+      toast.error("Unable to add reply. Please try again.");
+      setActivities(previousActivities);
+      throw error;
+    }
+  };
+
+  const handleToggleLike = async (activityId: string) => {
+    if (!userProfile) {
+      toast.error("Complete your profile to like posts.");
+      return;
+    }
+
+    const previousActivities = activities;
+    const isPersisted = isMongoObjectId(activityId);
+
     setActivities((prevActivities) =>
       prevActivities.map((activity) => {
-        if (activity.id === activityId) {
-          const updatedComments = activity.comments.map((comment: Comment) => {
-            if (comment.id === parentCommentId) {
-              const newReply: Comment = {
-                id: generateLocalId(),
-                user: userProfile?.name || "You",
-                avatar:
-                  userProfile?.avatar ||
-                  "https://i.pravatar.cc/150?u=currentuser",
-                text: replyText,
-              };
-              return {
-                ...comment,
-                replies: [...(comment.replies || []), newReply],
-              };
-            }
-            return comment;
-          });
-          return { ...activity, comments: updatedComments };
+        if (activity.id !== activityId) {
+          return activity;
         }
-        return activity;
+        const currentlyLiked = activity.likedByCurrentUser ?? false;
+        const baseLikedBy =
+          activity.likedBy && Array.isArray(activity.likedBy)
+            ? [...activity.likedBy]
+            : [];
+
+        let updatedLikedBy = baseLikedBy;
+
+        if (!isPersisted) {
+          const identifier =
+            userProfile.username || userProfile.name || "current-user";
+          const likeSet = new Set(baseLikedBy);
+          if (currentlyLiked) {
+            likeSet.delete(identifier);
+          } else {
+            likeSet.add(identifier);
+          }
+          updatedLikedBy = Array.from(likeSet);
+        }
+
+        return {
+          ...activity,
+          likedByCurrentUser: !currentlyLiked,
+          kudos: Math.max(0, activity.kudos + (currentlyLiked ? -1 : 1)),
+          likedBy: updatedLikedBy,
+        };
       })
     );
+
+    if (!isPersisted) {
+      return;
+    }
+
+    try {
+      const { liked, kudos, likedBy } = (await apiClient.post(
+        `/posts/${activityId}/like`
+      )) as { liked: boolean; kudos: number; likedBy: string[] };
+
+      setActivities((prevActivities) =>
+        prevActivities.map((activity) =>
+          activity.id === activityId
+            ? {
+                ...activity,
+                likedByCurrentUser: liked,
+                kudos,
+                likedBy,
+              }
+            : activity
+        )
+      );
+    } catch (error) {
+      console.error("Failed to toggle like", error);
+      toast.error("Unable to update like. Please try again.");
+      setActivities(previousActivities);
+    }
   };
 
   const handleViewProfile = (username: string) => {
@@ -759,6 +938,7 @@ const App: React.FC = () => {
     activities: activities,
     onAddComment: handleAddComment,
     onAddReply: handleAddReply,
+    onToggleLike: handleToggleLike,
     onViewProfile: handleViewProfile,
     onDeleteActivity: handleDeleteActivity,
     currentUser: userProfile,
@@ -820,6 +1000,7 @@ const App: React.FC = () => {
             onDeleteActivity={handleDeleteActivity}
             onAddComment={handleAddComment}
             onAddReply={handleAddReply}
+            onToggleLike={handleToggleLike}
             onViewProfile={handleViewProfile}
             setCurrentView={setCurrentView}
           />
@@ -839,6 +1020,7 @@ const App: React.FC = () => {
               pendingConnections={pendingConnections}
               onAddComment={handleAddComment}
               onAddReply={handleAddReply}
+              onToggleLike={handleToggleLike}
               onDeleteActivity={handleDeleteActivity}
               onViewProfile={handleViewProfile}
             />

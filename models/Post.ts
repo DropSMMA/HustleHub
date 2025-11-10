@@ -5,6 +5,7 @@ import toJSON from "./plugins/toJSON";
 
 export interface IReply {
   id: string;
+  userId: Types.ObjectId;
   user: string;
   avatar: string;
   text: string;
@@ -24,6 +25,7 @@ export interface IPost extends Document {
   stats?: string;
   image?: string;
   kudos: number;
+  likedBy: Types.ObjectId[];
   comments: IComment[];
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +34,7 @@ export interface IPost extends Document {
 const replySchema = new Schema<IReply>(
   {
     id: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     user: { type: String, required: true },
     avatar: { type: String, required: true },
     text: { type: String, required: true },
@@ -68,6 +71,11 @@ const postSchema = new Schema<IPost>(
     stats: { type: String, trim: true },
     image: { type: String },
     kudos: { type: Number, default: 0 },
+    likedBy: {
+      type: [Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
     comments: {
       type: [commentSchema],
       default: [],

@@ -7,6 +7,8 @@ import User from "@/models/User";
 import Post from "@/models/Post";
 import { ActivityType } from "@/app/types";
 
+type SerializedPost = Record<string, any>;
+
 const isValidImage = (value: string) =>
   value.startsWith("data:") || /^https?:\/\//.test(value);
 
@@ -33,6 +35,18 @@ export async function GET(request: Request) {
 
     await connectMongo();
 
+    const session = await auth();
+
+    const currentUser = session?.user?.email
+      ? await User.findOne({
+          email: session.user.email.toLowerCase(),
+        })
+          .select("_id")
+          .lean()
+      : null;
+
+    const currentUserId = currentUser?._id?.toString() ?? null;
+
     const filter =
       cursor && mongoose.Types.ObjectId.isValid(cursor)
         ? { _id: { $lt: new mongoose.Types.ObjectId(cursor) } }
@@ -49,9 +63,18 @@ export async function GET(request: Request) {
       nextCursor = nextPost ? nextPost.id : null;
     }
 
-    const serializedPosts = posts.map((post) => post.toJSON());
+    const serializedPosts = posts.map(
+      (post) => post.toJSON() as SerializedPost
+    );
 
-    const normalizedPosts = serializedPosts.map((post) => {
+    const normalizedPosts = serializedPosts.map((post, index) => {
+      const original = posts[index];
+
+      const likedBy =
+        Array.isArray(original.likedBy) && original.likedBy.length > 0
+          ? original.likedBy.map((id) => id.toString())
+          : [];
+
       const userIdRaw = (post as Record<string, unknown>).userId;
       const userId =
         typeof userIdRaw === "string"
@@ -60,10 +83,17 @@ export async function GET(request: Request) {
           ? (userIdRaw as mongoose.Types.ObjectId).toString()
           : undefined;
 
-      return {
+      const normalized: SerializedPost = {
         ...post,
         userId,
+        likedByCurrentUser: currentUserId
+          ? likedBy.includes(currentUserId)
+          : false,
+        kudos: likedBy.length,
+        likedBy,
       };
+
+      return normalized;
     });
 
     const userIds = [
@@ -84,7 +114,10 @@ export async function GET(request: Request) {
     const DEFAULT_AVATAR =
       "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 
-    const owners = new Map(
+    const owners = new Map<
+      string,
+      { name: string; username: string; avatar: string }
+    >(
       users.map((user) => [
         user._id.toString(),
         {
@@ -95,18 +128,22 @@ export async function GET(request: Request) {
       ])
     );
 
-    const enrichedPosts = normalizedPosts.map((post) => ({
-      ...post,
-      owner:
-        owners.get(post.userId) ??
+    const enrichedPosts = normalizedPosts.map((post) => {
+      const owner =
+        (post.userId && owners.get(post.userId)) ||
         (post.username || post.name || post.avatar
           ? {
               name: post.name ?? "",
               username: post.username ?? "",
               avatar: post.avatar ?? DEFAULT_AVATAR,
             }
-          : undefined),
-    }));
+          : undefined);
+
+      return {
+        ...post,
+        owner,
+      };
+    });
 
     return NextResponse.json({
       posts: enrichedPosts,
@@ -166,6 +203,7 @@ export async function POST(request: Request) {
       stats: payload.stats,
       image: payload.image,
       kudos: 0,
+      likedBy: [],
       comments: [],
     });
 
@@ -178,8 +216,18 @@ export async function POST(request: Request) {
       avatar: user.image ?? session.user.image ?? DEFAULT_AVATAR,
     };
 
+    const json = post.toJSON();
+
     return NextResponse.json(
-      { post: { ...post.toJSON(), owner } },
+      {
+        post: {
+          ...json,
+          owner,
+          likedByCurrentUser: false,
+          likedBy: [],
+          kudos: Array.isArray(post.likedBy) ? post.likedBy.length : 0,
+        },
+      },
       {
         status: 201,
       }

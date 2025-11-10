@@ -17,6 +17,8 @@ export interface PostDTO {
   stats?: string;
   image?: string;
   kudos: number;
+  likedByCurrentUser?: boolean;
+  likedBy?: string[];
   comments: Comment[];
   createdAt: string;
   updatedAt: string;
@@ -83,6 +85,8 @@ export const mapPostToActivity = (post: PostDTO): Activity => ({
   stats: post.stats ?? "",
   image: post.image,
   kudos: post.kudos,
+  likedByCurrentUser: Boolean(post.likedByCurrentUser),
+  likedBy: post.likedBy ?? [],
   comments: post.comments ?? [],
   timestamp: formatRelativeTime(post.createdAt),
 });

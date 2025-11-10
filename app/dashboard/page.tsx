@@ -36,6 +36,7 @@ import { PlusIcon } from "@/components/app/icons/PlusIcon";
 
 const USER_PROFILE_STORAGE_KEY = "hustlehub:userProfile";
 const ONBOARDING_COMPLETE_STORAGE_KEY = "hustlehub:onboardingComplete";
+const USER_PROFILE_OWNER_STORAGE_KEY = "hustlehub:userProfileOwner";
 
 const createWelcomeActivity = (profile: UserProfile): Activity => ({
   id: `${Date.now() + 1}`,
@@ -355,10 +356,43 @@ const App: React.FC = () => {
     []
   );
 
+  const sessionUserId = session?.user?.id ?? null;
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+
+    if (sessionStatus === "unauthenticated") {
+      window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+      window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
+      window.localStorage.removeItem(USER_PROFILE_OWNER_STORAGE_KEY);
+      setUserProfile(null);
+      setIsOnboarding(true);
+      return;
+    }
+
+    if (sessionStatus !== "authenticated" || !sessionUserId) {
+      return;
+    }
+
+    const storedOwnerId = window.localStorage.getItem(
+      USER_PROFILE_OWNER_STORAGE_KEY
+    );
+
+    if (storedOwnerId && storedOwnerId !== sessionUserId) {
+      window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+      window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
+      window.localStorage.setItem(
+        USER_PROFILE_OWNER_STORAGE_KEY,
+        sessionUserId
+      );
+      setUserProfile(null);
+      setIsOnboarding(true);
+      return;
+    }
+
+    window.localStorage.setItem(USER_PROFILE_OWNER_STORAGE_KEY, sessionUserId);
 
     const onboardingCompleted = window.localStorage.getItem(
       ONBOARDING_COMPLETE_STORAGE_KEY
@@ -374,9 +408,10 @@ const App: React.FC = () => {
         console.error("Failed to restore onboarding state", error);
         window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
         window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+        window.localStorage.removeItem(USER_PROFILE_OWNER_STORAGE_KEY);
       }
     }
-  }, []);
+  }, [sessionStatus, sessionUserId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || userProfile) {
@@ -433,6 +468,12 @@ const App: React.FC = () => {
             JSON.stringify(normalizedProfile)
           );
           window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
+          if (sessionUserId) {
+            window.localStorage.setItem(
+              USER_PROFILE_OWNER_STORAGE_KEY,
+              sessionUserId
+            );
+          }
         }
       } catch (error) {
         console.error("Error loading user profile", error);
@@ -441,7 +482,7 @@ const App: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, [sessionStatus, userProfile]);
+  }, [sessionStatus, userProfile, sessionUserId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !userProfile || hasLoadedPosts) {
@@ -474,6 +515,12 @@ const App: React.FC = () => {
         JSON.stringify(profile)
       );
       window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
+      if (sessionUserId) {
+        window.localStorage.setItem(
+          USER_PROFILE_OWNER_STORAGE_KEY,
+          sessionUserId
+        );
+      }
     }
 
     setIsOnboarding(false);
@@ -838,6 +885,13 @@ const App: React.FC = () => {
         USER_PROFILE_STORAGE_KEY,
         JSON.stringify(updatedProfile)
       );
+      window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
+      if (sessionUserId) {
+        window.localStorage.setItem(
+          USER_PROFILE_OWNER_STORAGE_KEY,
+          sessionUserId
+        );
+      }
     }
   };
 

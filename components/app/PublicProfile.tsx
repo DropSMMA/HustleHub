@@ -20,7 +20,7 @@ interface PublicProfileProps {
     onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
     onToggleLike: (activityId: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
-    onViewProfile: (username: string) => void;
+    onViewProfile: (username: string) => Promise<void> | void;
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({ value, label }) => (

@@ -294,6 +294,11 @@ const App: React.FC = () => {
   );
   const [viewingConnectionsOf, setViewingConnectionsOf] =
     useState<UserProfile | null>(null);
+  const [viewingProfileLoading, setViewingProfileLoading] =
+    useState<boolean>(false);
+  const [viewingProfileError, setViewingProfileError] = useState<string | null>(
+    null
+  );
   const [isPreparingWorkspace, setIsPreparingWorkspace] =
     useState<boolean>(false);
   const [challenges, setChallenges] = useState<Challenge[]>(MOCK_CHALLENGES);
@@ -830,15 +835,151 @@ const App: React.FC = () => {
     }
   };
 
-  const handleViewProfile = (username: string) => {
-    if (username === userProfile?.username) {
+  const handleViewProfile = async (username: string) => {
+    const normalizedUsername = username?.trim();
+    if (!normalizedUsername) {
+      return;
+    }
+
+    if (normalizedUsername === userProfile?.username) {
       setCurrentView("profile");
       return;
     }
-    const profile = MOCK_USER_PROFILES[username];
-    if (profile) {
-      setViewingProfile(profile);
-      setCurrentView("publicProfile");
+
+    if (viewingProfile?.username !== normalizedUsername) {
+      setViewingProfile(null);
+    }
+
+    setViewingProfileLoading(true);
+    setViewingProfileError(null);
+    setCurrentView("publicProfile");
+
+    try {
+      const response = await fetch(
+        `/api/user/${encodeURIComponent(normalizedUsername)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        }
+      );
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          user: {
+            username: string;
+            name?: string | null;
+            avatar?: string | null;
+            tagline?: string | null;
+            projects?: string | null;
+            focuses?: FocusArea[] | null;
+            connections?: string[] | null;
+            socials?: Record<string, string | null> | null;
+          };
+          posts?: PostDTO[];
+        };
+
+        const focuses = Array.isArray(data.user.focuses)
+          ? (data.user.focuses.filter(
+              (focus): focus is FocusArea =>
+                typeof focus === "string" && focus.length > 0
+            ) as FocusArea[])
+          : [];
+
+        const connections = Array.isArray(data.user.connections)
+          ? data.user.connections
+              .map((connection) =>
+                typeof connection === "string" ? connection.trim() : ""
+              )
+              .filter((connection) => connection.length > 0)
+          : [];
+
+        const sanitizedSocials =
+          data.user.socials && typeof data.user.socials === "object"
+            ? Object.entries(data.user.socials).reduce((acc, [key, value]) => {
+                if (typeof value === "string") {
+                  const trimmed = value.trim();
+                  if (trimmed.length > 0) {
+                    acc[key as keyof UserProfile["socials"]] = trimmed;
+                  }
+                }
+                return acc;
+              }, {} as NonNullable<UserProfile["socials"]>)
+            : undefined;
+
+        const normalizedProfile: UserProfile = {
+          username: data.user.username,
+          name: data.user.name?.trim() ?? "",
+          avatar: data.user.avatar ?? DEFAULT_AVATAR,
+          tagline: data.user.tagline?.trim() ?? "",
+          projects: data.user.projects?.trim() ?? "",
+          focuses,
+          connections,
+          socials:
+            sanitizedSocials && Object.keys(sanitizedSocials).length > 0
+              ? sanitizedSocials
+              : undefined,
+        };
+
+        setViewingProfile(normalizedProfile);
+
+        const posts = Array.isArray(data.posts) ? data.posts : [];
+        const mappedActivities = mapPostsToActivities(posts);
+
+        setActivities((prev) => {
+          if (mappedActivities.length === 0) {
+            return prev;
+          }
+
+          const indexMap = new Map(
+            prev.map((activity, index) => [activity.id, index])
+          );
+
+          let hasChanges = false;
+          const updated = [...prev];
+
+          mappedActivities.forEach((activity) => {
+            const existingIndex = indexMap.get(activity.id);
+            if (existingIndex !== undefined) {
+              updated[existingIndex] = {
+                ...updated[existingIndex],
+                ...activity,
+              };
+              hasChanges = true;
+            } else {
+              updated.push(activity);
+              hasChanges = true;
+            }
+          });
+
+          return hasChanges ? updated : prev;
+        });
+
+        setViewingProfileError(null);
+      } else if (response.status === 404) {
+        const fallback = MOCK_USER_PROFILES[normalizedUsername];
+        if (fallback) {
+          setViewingProfile(fallback);
+          setViewingProfileError(null);
+        } else {
+          setViewingProfile(null);
+          setViewingProfileError("We couldn't find that profile.");
+        }
+      } else {
+        const payload = (await response.json()) as { message?: string };
+        throw new Error(payload.message ?? "Unable to load profile.");
+      }
+    } catch (error) {
+      console.error("Failed to load profile", error);
+      setViewingProfileError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Unable to load profile right now. Please try again later."
+      );
+    } finally {
+      setViewingProfileLoading(false);
     }
   };
 
@@ -849,6 +990,13 @@ const App: React.FC = () => {
 
   const handleClearHighlightedPost = () => {
     setHighlightedPostId(null);
+  };
+
+  const handleClosePublicProfile = () => {
+    setCurrentView("feed");
+    setViewingProfile(null);
+    setViewingProfileError(null);
+    setViewingProfileLoading(false);
   };
 
   const handleGenerateInsight = useCallback(
@@ -875,6 +1023,18 @@ const App: React.FC = () => {
 
   const handleUpdateProfile = (updatedProfile: UserProfile) => {
     setUserProfile(updatedProfile);
+    setViewingProfile((prev) => {
+      if (!prev || !updatedProfile.username) {
+        return prev;
+      }
+      if (prev.username !== updatedProfile.username) {
+        return prev;
+      }
+      return {
+        ...prev,
+        ...updatedProfile,
+      };
+    });
     // Also update MOCK_USER_PROFILES so changes are reflected in public views
     if (updatedProfile.username) {
       MOCK_USER_PROFILES[updatedProfile.username] = updatedProfile;
@@ -920,6 +1080,21 @@ const App: React.FC = () => {
           connections: [...senderProfile.connections, userProfile.username],
         };
       }
+    }
+
+    if (userProfile?.username) {
+      setViewingProfile((prev) => {
+        if (!prev || prev.username !== fromUsername) {
+          return prev;
+        }
+        if (prev.connections.includes(userProfile.username)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          connections: [...prev.connections, userProfile.username],
+        };
+      });
     }
 
     setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
@@ -1060,6 +1235,26 @@ const App: React.FC = () => {
           />
         );
       case "publicProfile":
+        if (viewingProfileLoading) {
+          return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-neon"></div>
+            </div>
+          );
+        }
+        if (viewingProfileError) {
+          return (
+            <div className="container mx-auto px-4 max-w-lg text-center space-y-4 animate-fade-in">
+              <p className="text-gray-300">{viewingProfileError}</p>
+              <button
+                onClick={handleClosePublicProfile}
+                className="bg-brand-neon text-brand-primary font-bold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
+              >
+                Back to Feed
+              </button>
+            </div>
+          );
+        }
         if (viewingProfile) {
           return (
             <PublicProfile
@@ -1068,7 +1263,7 @@ const App: React.FC = () => {
               activities={activities.filter(
                 (a) => a.username === viewingProfile.username
               )}
-              onBack={() => setCurrentView("feed")}
+              onBack={handleClosePublicProfile}
               onViewConnections={handleViewConnections}
               onConnect={handleSendConnectRequest}
               pendingConnections={pendingConnections}
@@ -1105,7 +1300,7 @@ const App: React.FC = () => {
                 if (viewingConnectionsOf.username === userProfile?.username) {
                   setCurrentView("profile");
                 } else {
-                  handleViewProfile(viewingConnectionsOf.username);
+                  void handleViewProfile(viewingConnectionsOf.username);
                 }
               }}
               onViewProfile={handleViewProfile}

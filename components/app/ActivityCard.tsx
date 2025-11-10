@@ -20,7 +20,7 @@ interface ActivityCardProps {
     parentCommentId: string,
     replyText: string
   ) => Promise<void> | void;
-  onViewProfile: (username: string) => void;
+  onViewProfile: (username: string) => Promise<void> | void;
   onToggleLike: (activityId: string) => Promise<void> | void;
   onDelete?: (activityId: string) => void;
   currentUser: UserProfile | null;
@@ -90,7 +90,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
   };
 
   const handleProfileClick = () => {
-    onViewProfile(username);
+    void onViewProfile(username);
   };
 
   const confirmDelete = () => {

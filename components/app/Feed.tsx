@@ -8,7 +8,7 @@ interface FeedProps {
     onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
     onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
     onToggleLike: (activityId: string) => Promise<void> | void;
-    onViewProfile: (username: string) => void;
+    onViewProfile: (username: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
     currentUser: UserProfile | null;
     highlightedPostId?: string | null;

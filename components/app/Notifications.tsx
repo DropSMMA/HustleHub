@@ -7,12 +7,12 @@ import { SparklesIcon } from './icons/SparklesIcon';
 import { UserPlusIcon } from './icons/UserPlusIcon';
 
 interface NotificationsProps {
-    notifications: Notification[];
-    onClearAll: () => void;
-    onAcceptConnectRequest: (notificationId: number, fromUsername: string) => void;
-    onDeclineConnectRequest: (notificationId: number) => void;
-    onViewProfile: (username: string) => void;
-    onViewActivity: (postId: string) => void;
+  notifications: Notification[];
+  onClearAll: () => void;
+  onAcceptConnectRequest: (notificationId: number, fromUsername: string) => void;
+  onDeclineConnectRequest: (notificationId: number) => void;
+  onViewProfile: (username: string) => Promise<void> | void;
+  onViewActivity: (postId: string) => void;
 }
 
 const NotificationIcon: React.FC<{ type: NotificationType }> = ({ type }) => {
@@ -61,7 +61,10 @@ const Notifications: React.FC<NotificationsProps> = ({ notifications, onClearAll
                                         <div className="flex items-start space-x-2">
                                             <button
                                                 className="flex-shrink-0 z-10 relative"
-                                                onClick={(e) => { e.stopPropagation(); onViewProfile(notification.actor.username); }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    void onViewProfile(notification.actor.username);
+                                                }}
                                             >
                                                 <img src={notification.actor.avatar} alt={notification.actor.name} className="h-6 w-6 rounded-full" />
                                             </button>
@@ -70,7 +73,10 @@ const Notifications: React.FC<NotificationsProps> = ({ notifications, onClearAll
                                                     <>
                                                         <button
                                                             className="font-bold text-white hover:underline z-10 relative"
-                                                            onClick={(e) => { e.stopPropagation(); onViewProfile(notification.actor.username); }}
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              void onViewProfile(notification.actor.username);
+                                                            }}
                                                         >
                                                             {notification.actor.name}
                                                         </button>

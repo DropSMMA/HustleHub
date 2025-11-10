@@ -28,7 +28,7 @@ interface ProfileProps {
     replyText: string
   ) => Promise<void> | void;
   onToggleLike: (activityId: string) => Promise<void> | void;
-  onViewProfile: (username: string) => void;
+  onViewProfile: (username: string) => Promise<void> | void;
   setCurrentView: (view: View) => void;
 }
 

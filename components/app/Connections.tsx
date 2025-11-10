@@ -4,10 +4,10 @@ import { BackIcon } from './icons/BackIcon';
 import { SearchIcon } from './icons/SearchIcon';
 
 interface ConnectionsProps {
-    user: UserProfile;
-    allUsers: Record<string, UserProfile>;
-    onBack: () => void;
-    onViewProfile: (username: string) => void;
+  user: UserProfile;
+  allUsers: Record<string, UserProfile>;
+  onBack: () => void;
+  onViewProfile: (username: string) => Promise<void> | void;
 }
 
 const Connections: React.FC<ConnectionsProps> = ({ user, allUsers, onBack, onViewProfile }) => {
@@ -49,7 +49,7 @@ const Connections: React.FC<ConnectionsProps> = ({ user, allUsers, onBack, onVie
                     {filteredConnections.map(profile => (
                         <button 
                             key={profile.username}
-                            onClick={() => onViewProfile(profile.username)}
+                            onClick={() => void onViewProfile(profile.username)}
                             className="w-full bg-brand-secondary p-3 rounded-lg flex items-center space-x-4 transition-colors hover:bg-brand-tertiary text-left"
                         >
                             <img src={profile.avatar} alt={profile.name} className="h-12 w-12 rounded-full object-cover" />

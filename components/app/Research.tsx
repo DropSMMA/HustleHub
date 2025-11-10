@@ -5,7 +5,7 @@ import { SearchIcon } from "./icons/SearchIcon";
 interface ResearchProps {
   allUsers: UserProfile[];
   currentUser: UserProfile | null;
-  onViewProfile: (username: string) => void;
+  onViewProfile: (username: string) => Promise<void> | void;
 }
 
 const Research: React.FC<ResearchProps> = ({
@@ -49,7 +49,7 @@ const Research: React.FC<ResearchProps> = ({
           {filteredUsers.map((profile) => (
             <button
               key={profile.username}
-              onClick={() => onViewProfile(profile.username)}
+              onClick={() => void onViewProfile(profile.username)}
               className="w-full bg-brand-secondary p-3 rounded-lg flex items-center space-x-4 transition-colors hover:bg-brand-tertiary text-left"
             >
               <img

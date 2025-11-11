@@ -1,6 +1,6 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
-import s3 from "@/libs/s3";
+import getS3Client from "@/libs/s3";
 
 const normalizeHost = (input?: string | null): string | null => {
   if (!input) {
@@ -76,6 +76,8 @@ export const deleteS3ObjectByUrl = async (
   }
 
   try {
+    const s3 = getS3Client();
+
     await s3.send(
       new DeleteObjectCommand({
         Bucket: bucket,

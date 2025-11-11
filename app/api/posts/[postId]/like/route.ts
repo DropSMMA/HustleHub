@@ -5,11 +5,7 @@ import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post from "@/models/Post";
 
-type LikeRouteContext = {
-  params: Promise<{ postId: string }>;
-};
-
-export async function POST(request: Request, context: LikeRouteContext) {
+export async function POST(request: Request, context: any) {
   try {
     const session = await auth();
 
@@ -17,7 +13,13 @@ export async function POST(request: Request, context: LikeRouteContext) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { postId } = await context.params;
+    const postIdRaw = context?.params?.postId;
+    const postId =
+      typeof postIdRaw === "string"
+        ? postIdRaw
+        : Array.isArray(postIdRaw)
+        ? postIdRaw[0]
+        : undefined;
 
     if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
       return NextResponse.json(
@@ -43,16 +45,15 @@ export async function POST(request: Request, context: LikeRouteContext) {
     const post = await Post.findById(postId);
 
     if (!post) {
-      return NextResponse.json(
-        { message: "Post not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Post not found." }, { status: 404 });
     }
 
     post.likedBy = post.likedBy ?? [];
 
     const userIdString = user._id.toString();
-    const currentLikedBy = post.likedBy.map((id) => id.toString());
+    const currentLikedBy = post.likedBy.map((id) =>
+      id instanceof mongoose.Types.ObjectId ? id.toString() : String(id)
+    );
     const alreadyLiked = currentLikedBy.includes(userIdString);
 
     if (alreadyLiked) {
@@ -60,7 +61,7 @@ export async function POST(request: Request, context: LikeRouteContext) {
         (id) => id.toString() !== userIdString
       );
     } else {
-      post.likedBy.push(user._id);
+      post.likedBy.push(user._id as mongoose.Types.ObjectId);
     }
 
     post.kudos = post.likedBy.length;
@@ -83,4 +84,3 @@ export async function POST(request: Request, context: LikeRouteContext) {
     );
   }
 }
-

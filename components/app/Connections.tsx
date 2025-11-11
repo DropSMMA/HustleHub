@@ -28,7 +28,7 @@ const Connections: React.FC<ConnectionsProps> = ({ user, allUsers, onBack, onVie
                 <button onClick={onBack} className="text-gray-300 hover:text-white p-2 absolute -left-2">
                     <BackIcon />
                 </button>
-                <h2 className="text-xl font-bold text-center w-full">{user.name}'s Connections</h2>
+                <h2 className="text-xl font-bold text-center w-full">{`${user.name}’s Connections`}</h2>
             </div>
 
             <div className="relative">

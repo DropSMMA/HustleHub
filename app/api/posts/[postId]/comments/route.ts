@@ -4,18 +4,14 @@ import { z } from "zod";
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
-import Post from "@/models/Post";
+import Post, { type IReply } from "@/models/Post";
 
 const commentInputSchema = z.object({
   text: z.string().trim().min(1).max(500),
   parentId: z.string().trim().optional(),
 });
 
-type CommentsRouteContext = {
-  params: Promise<{ postId: string }>;
-};
-
-export async function POST(request: Request, context: CommentsRouteContext) {
+export async function POST(request: Request, context: any) {
   try {
     const session = await auth();
 
@@ -23,7 +19,13 @@ export async function POST(request: Request, context: CommentsRouteContext) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { postId } = await context.params;
+    const postIdRaw = context?.params?.postId;
+    const postId =
+      typeof postIdRaw === "string"
+        ? postIdRaw
+        : Array.isArray(postIdRaw)
+        ? postIdRaw[0]
+        : undefined;
 
     if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
       return NextResponse.json(
@@ -52,27 +54,26 @@ export async function POST(request: Request, context: CommentsRouteContext) {
     const post = await Post.findById(postId);
 
     if (!post) {
-      return NextResponse.json(
-        { message: "Post not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Post not found." }, { status: 404 });
     }
 
     const DEFAULT_AVATAR =
       "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 
     const commentId = new mongoose.Types.ObjectId().toString();
-    const commentPayload = {
+    const baseComment: IReply = {
       id: commentId,
-      userId: user._id,
+      userId: user._id as mongoose.Types.ObjectId,
       user: user.name ?? session.user.name ?? "HustleHub Creator",
-      avatar:
-        user.image ?? session.user.image ?? DEFAULT_AVATAR,
+      avatar: user.image ?? session.user.image ?? DEFAULT_AVATAR,
       text: payload.text,
-      replies: [] as never[],
     };
 
-    let responseComment = commentPayload;
+    let responseComment = {
+      ...baseComment,
+      userId: baseComment.userId.toString(),
+      replies: [] as never[],
+    };
     let status = 201;
 
     if (payload.parentId) {
@@ -87,14 +88,23 @@ export async function POST(request: Request, context: CommentsRouteContext) {
         );
       }
 
-      parent.replies = [...(parent.replies ?? []), { ...commentPayload }];
-      responseComment = { ...commentPayload };
+      parent.replies = [...(parent.replies ?? []), baseComment];
+      responseComment = {
+        ...baseComment,
+        userId: baseComment.userId.toString(),
+        replies: [] as never[],
+      };
       status = 200;
     } else {
       post.comments.push({
-        ...commentPayload,
+        ...baseComment,
         replies: [],
-      });
+      } as any);
+      responseComment = {
+        ...baseComment,
+        userId: baseComment.userId.toString(),
+        replies: [] as never[],
+      };
     }
 
     await post.save();
@@ -124,4 +134,3 @@ export async function POST(request: Request, context: CommentsRouteContext) {
     );
   }
 }
-

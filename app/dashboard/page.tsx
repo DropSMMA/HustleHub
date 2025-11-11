@@ -8,6 +8,7 @@ import {
   ActivityType,
   View,
   UserProfile,
+  ConnectionPreview,
   FocusArea,
   Comment,
   Notification,
@@ -187,56 +188,33 @@ const DEFAULT_AVATAR =
 
 const DEFAULT_POST_LIMIT = 20;
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: 1,
-    type: NotificationType.Kudo,
-    message: "gave you kudos on your <strong>Deep Work</strong> session.",
-    postId: "1",
-    timestamp: "1h ago",
-    read: false,
+const mapPreviewToUserProfile = (preview: ConnectionPreview): UserProfile => ({
+  username: preview.username,
+  name: preview.name || preview.username,
+  avatar: preview.avatar || DEFAULT_AVATAR,
+  tagline: preview.tagline ?? "",
+  projects: preview.projects ?? "",
+  focuses: Array.isArray(preview.focuses) ? preview.focuses : [],
+  connections: [],
+});
+
+interface ConnectionsApiResponse {
+  username: string;
+  connections: ConnectionPreview[];
+  pending: {
+    incoming: ConnectionPreview[];
+    outgoing: ConnectionPreview[];
+  };
+  notifications: Array<{
+    id: number;
     actor: {
-      name: "Jenna Miles",
-      avatar: "https://i.pravatar.cc/150?u=jennamiles",
-      username: "jennamiles",
-    },
-  },
-  {
-    id: 2,
-    type: NotificationType.Comment,
-    message:
-      'commented on your <strong>Deep Work</strong> session: "This is huge! Well done."',
-    postId: "1",
-    timestamp: "2h ago",
-    read: false,
-    actor: {
-      name: "Samurai Sam",
-      avatar: "https://i.pravatar.cc/150?u=samuraisam",
-      username: "samuraisam",
-    },
-  },
-  {
-    id: 3,
-    type: NotificationType.Challenge,
-    message:
-      "A new challenge is available: <strong>Founder Fitness February</strong>. Ready to join?",
-    timestamp: "1d ago",
-    read: true,
-    actor: { name: "HustleHub", avatar: "/vite.svg", username: "hustlehub" },
-  },
-  {
-    id: 4,
-    type: NotificationType.ConnectRequest,
-    message: "wants to connect with you.",
-    timestamp: "3d ago",
-    read: false,
-    actor: {
-      name: "Tech Guru",
-      avatar: "https://i.pravatar.cc/150?u=techguru",
-      username: "techguru",
-    },
-  },
-];
+      username: string;
+      name: string;
+      avatar: string;
+    };
+    message: string;
+  }>;
+}
 
 type FetchPostsOptions = {
   cursor?: string | null;
@@ -282,8 +260,7 @@ const App: React.FC = () => {
   const { data: session, status: sessionStatus } = useSession();
   const [currentView, setCurrentView] = useState<View>("feed");
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [notifications, setNotifications] =
-    useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [weeklyInsight, setWeeklyInsight] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,9 +278,12 @@ const App: React.FC = () => {
   );
   const [isPreparingWorkspace, setIsPreparingWorkspace] =
     useState<boolean>(false);
-  const [challenges, setChallenges] = useState<Challenge[]>(MOCK_CHALLENGES);
+  const [challenges] = useState<Challenge[]>(MOCK_CHALLENGES);
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
   const [pendingConnections, setPendingConnections] = useState<string[]>([]);
+  const [connectionDirectory, setConnectionDirectory] = useState<
+    Record<string, UserProfile>
+  >({});
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(
     null
   );
@@ -362,6 +342,101 @@ const App: React.FC = () => {
   );
 
   const sessionUserId = session?.user?.id ?? null;
+
+  const refreshConnections = useCallback(async () => {
+    try {
+      const data = (await apiClient.get(
+        "/connections"
+      )) as ConnectionsApiResponse;
+
+      const connections = Array.isArray(data.connections)
+        ? data.connections
+        : [];
+      const incoming = Array.isArray(data.pending?.incoming)
+        ? data.pending.incoming
+        : [];
+      const outgoing = Array.isArray(data.pending?.outgoing)
+        ? data.pending.outgoing
+        : [];
+
+      setPendingConnections(outgoing.map((preview) => preview.username));
+
+      let mergedProfile: UserProfile | null = null;
+
+      setUserProfile((prev) => {
+        if (!prev || prev.username !== data.username) {
+          return prev;
+        }
+        const nextProfile: UserProfile = {
+          ...prev,
+          connections: connections.map((preview) => preview.username),
+          pendingIncoming: incoming.map((preview) => preview.username),
+          pendingOutgoing: outgoing.map((preview) => preview.username),
+        };
+        mergedProfile = nextProfile;
+        return nextProfile;
+      });
+
+      setConnectionDirectory(() => {
+        const updated: Record<string, UserProfile> = {};
+        const ingest = (preview: ConnectionPreview) => {
+          updated[preview.username] = mapPreviewToUserProfile(preview);
+        };
+        connections.forEach(ingest);
+        incoming.forEach(ingest);
+        outgoing.forEach(ingest);
+        if (mergedProfile) {
+          updated[mergedProfile.username] = mergedProfile;
+        }
+        return updated;
+      });
+
+      setNotifications((prev) => {
+        const otherNotifications = prev.filter(
+          (notification) =>
+            notification.type !== NotificationType.ConnectRequest
+        );
+
+        const previousConnectionMeta = new Map(
+          prev
+            .filter(
+              (notification) =>
+                notification.type === NotificationType.ConnectRequest
+            )
+            .map((notification) => [
+              notification.actor.username,
+              { read: notification.read, timestamp: notification.timestamp },
+            ])
+        );
+
+        const connectionNotifications =
+          Array.isArray(data.notifications) && data.notifications.length > 0
+            ? data.notifications.map((notification) => ({
+                id: notification.id,
+                type: NotificationType.ConnectRequest,
+                message: notification.message,
+                timestamp:
+                  previousConnectionMeta.get(notification.actor.username)
+                    ?.timestamp ?? "Just now",
+                read:
+                  previousConnectionMeta.get(notification.actor.username)
+                    ?.read ?? false,
+                actor: notification.actor,
+              }))
+            : [];
+
+        return [...otherNotifications, ...connectionNotifications];
+      });
+    } catch (error) {
+      console.error("Failed to load connections", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sessionStatus === "authenticated" && userProfile?.username) {
+      void refreshConnections();
+    }
+  }, [sessionStatus, userProfile?.username, refreshConnections]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -445,6 +520,26 @@ const App: React.FC = () => {
           return;
         }
 
+        const pendingIncoming = Array.isArray(user.incomingRequests)
+          ? user.incomingRequests
+              .map((username: unknown) =>
+                typeof username === "string"
+                  ? username.trim().toLowerCase()
+                  : ""
+              )
+              .filter((username: string) => username.length > 0)
+          : [];
+
+        const pendingOutgoing = Array.isArray(user.outgoingRequests)
+          ? user.outgoingRequests
+              .map((username: unknown) =>
+                typeof username === "string"
+                  ? username.trim().toLowerCase()
+                  : ""
+              )
+              .filter((username: string) => username.length > 0)
+          : [];
+
         const normalizedProfile: UserProfile = {
           username: user.username,
           name: user.name ?? "",
@@ -456,12 +551,24 @@ const App: React.FC = () => {
             ? user.projects.join(", ")
             : user.projects ?? "",
           focuses: user.focuses,
-          connections: user.connections ?? [],
+          connections: Array.isArray(user.connections)
+            ? user.connections
+                .map((username: unknown) =>
+                  typeof username === "string"
+                    ? username.trim().toLowerCase()
+                    : ""
+                )
+                .filter((username: string) => username.length > 0)
+            : [],
           socials: user.socials,
+          pendingIncoming,
+          pendingOutgoing,
         };
 
         setUserProfile(normalizedProfile);
         setIsOnboarding(false);
+        setPendingConnections(pendingOutgoing);
+        void refreshConnections();
 
         const hasStoredProfile =
           typeof window !== "undefined" &&
@@ -487,7 +594,7 @@ const App: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, [sessionStatus, userProfile, sessionUserId]);
+  }, [sessionStatus, userProfile, sessionUserId, refreshConnections]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !userProfile || hasLoadedPosts) {
@@ -510,14 +617,19 @@ const App: React.FC = () => {
   }, [sessionStatus, userProfile, hasLoadedPosts, fetchPosts]);
 
   const handleCompleteOnboarding = (profile: UserProfile) => {
-    setUserProfile(profile);
+    const enrichedProfile: UserProfile = {
+      ...profile,
+      pendingIncoming: profile.pendingIncoming ?? [],
+      pendingOutgoing: profile.pendingOutgoing ?? [],
+    };
+    setUserProfile(enrichedProfile);
     const welcomeActivity = createWelcomeActivity(profile);
     setActivities([welcomeActivity, ...MOCK_ACTIVITIES]);
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         USER_PROFILE_STORAGE_KEY,
-        JSON.stringify(profile)
+        JSON.stringify(enrichedProfile)
       );
       window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
       if (sessionUserId) {
@@ -879,6 +991,9 @@ const App: React.FC = () => {
             socials?: Record<string, string | null> | null;
           };
           posts?: PostDTO[];
+          relationship?: {
+            status?: "self" | "connected" | "incoming" | "outgoing" | "none";
+          };
         };
 
         const focuses = Array.isArray(data.user.focuses)
@@ -924,6 +1039,25 @@ const App: React.FC = () => {
         };
 
         setViewingProfile(normalizedProfile);
+        setConnectionDirectory((prev) => ({
+          ...prev,
+          [normalizedProfile.username]: normalizedProfile,
+        }));
+
+        if (data.relationship?.status === "outgoing") {
+          setPendingConnections((prev) =>
+            prev.includes(normalizedUsername)
+              ? prev
+              : [...prev, normalizedUsername]
+          );
+        } else if (
+          data.relationship?.status === "connected" ||
+          data.relationship?.status === "none"
+        ) {
+          setPendingConnections((prev) =>
+            prev.filter((username) => username !== normalizedUsername)
+          );
+        }
 
         const posts = Array.isArray(data.posts) ? data.posts : [];
         const mappedActivities = mapPostsToActivities(posts);
@@ -1022,28 +1156,50 @@ const App: React.FC = () => {
   };
 
   const handleUpdateProfile = (updatedProfile: UserProfile) => {
-    setUserProfile(updatedProfile);
+    let computedProfile: UserProfile | null = null;
+
+    setUserProfile((prev) => {
+      const mergedProfile: UserProfile = {
+        ...(prev ?? updatedProfile),
+        ...updatedProfile,
+        pendingIncoming:
+          updatedProfile.pendingIncoming ?? prev?.pendingIncoming ?? [],
+        pendingOutgoing:
+          updatedProfile.pendingOutgoing ?? prev?.pendingOutgoing ?? [],
+      };
+      computedProfile = mergedProfile;
+      return mergedProfile;
+    });
+
+    if (!computedProfile) {
+      return;
+    }
+
     setViewingProfile((prev) => {
-      if (!prev || !updatedProfile.username) {
-        return prev;
-      }
-      if (prev.username !== updatedProfile.username) {
+      if (!prev || prev.username !== computedProfile?.username) {
         return prev;
       }
       return {
         ...prev,
-        ...updatedProfile,
+        ...computedProfile,
       };
     });
-    // Also update MOCK_USER_PROFILES so changes are reflected in public views
-    if (updatedProfile.username) {
-      MOCK_USER_PROFILES[updatedProfile.username] = updatedProfile;
+
+    if (computedProfile.username) {
+      const profileToPersist = computedProfile;
+      MOCK_USER_PROFILES[profileToPersist.username] = profileToPersist;
+      setConnectionDirectory((prev) => ({
+        ...prev,
+        [profileToPersist.username]: profileToPersist,
+      }));
     }
+
+    setPendingConnections(computedProfile.pendingOutgoing ?? []);
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         USER_PROFILE_STORAGE_KEY,
-        JSON.stringify(updatedProfile)
+        JSON.stringify(computedProfile)
       );
       window.localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
       if (sessionUserId) {
@@ -1055,60 +1211,116 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAcceptConnectRequest = (
+  const handleAcceptConnectRequest = async (
     notificationId: number,
     fromUsername: string
   ) => {
-    // Current user (receiver) adds sender to their connections
-    setUserProfile((prev: UserProfile | null) => {
-      if (!prev) return null;
-      if (prev.connections.includes(fromUsername)) return prev;
-      const updatedProfile = {
-        ...prev,
-        connections: [...prev.connections, fromUsername],
-      };
-      handleUpdateProfile(updatedProfile);
-      return updatedProfile;
-    });
+    const normalizedUsername = fromUsername.trim().toLowerCase();
 
-    // Sender adds current user (receiver) to their connections to make it mutual
-    const senderProfile = MOCK_USER_PROFILES[fromUsername];
-    if (senderProfile && userProfile) {
-      if (!senderProfile.connections.includes(userProfile.username)) {
-        MOCK_USER_PROFILES[fromUsername] = {
-          ...senderProfile,
-          connections: [...senderProfile.connections, userProfile.username],
-        };
-      }
-    }
+    try {
+      await apiClient.patch("/connections", {
+        username: normalizedUsername,
+        action: "accept",
+      });
 
-    if (userProfile?.username) {
-      setViewingProfile((prev) => {
-        if (!prev || prev.username !== fromUsername) {
+      toast.success("Connection request accepted.");
+
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== notificationId)
+      );
+
+      setUserProfile((prev) => {
+        if (!prev) {
           return prev;
         }
-        if (prev.connections.includes(userProfile.username)) {
-          return prev;
-        }
+        const connections = prev.connections.includes(normalizedUsername)
+          ? prev.connections
+          : [...prev.connections, normalizedUsername];
+        const pendingIncoming = (prev.pendingIncoming ?? []).filter(
+          (username) => username !== normalizedUsername
+        );
         return {
           ...prev,
-          connections: [...prev.connections, userProfile.username],
+          connections,
+          pendingIncoming,
         };
       });
-    }
 
-    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      setPendingConnections((prev) =>
+        prev.filter((username) => username !== normalizedUsername)
+      );
+
+      if (userProfile?.username) {
+        const currentUsername = userProfile.username;
+        setViewingProfile((prev) => {
+          if (!prev || prev.username !== normalizedUsername) {
+            return prev;
+          }
+          if (prev.connections.includes(currentUsername)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            connections: [...prev.connections, currentUsername],
+          };
+        });
+      }
+
+      await refreshConnections();
+    } catch (error) {
+      console.error("Failed to accept connection request", error);
+      toast.error("Unable to accept connection request. Please try again.");
+    }
   };
 
-  const handleDeclineConnectRequest = (notificationId: number) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+  const handleDeclineConnectRequest = async (
+    notificationId: number,
+    fromUsername: string
+  ) => {
+    const normalizedUsername = fromUsername.trim().toLowerCase();
+
+    try {
+      await apiClient.patch("/connections", {
+        username: normalizedUsername,
+        action: "decline",
+      });
+
+      toast.success("Connection request declined.");
+
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== notificationId)
+      );
+
+      setUserProfile((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const pendingIncoming = (prev.pendingIncoming ?? []).filter(
+          (username) => username !== normalizedUsername
+        );
+        return {
+          ...prev,
+          pendingIncoming,
+        };
+      });
+
+      await refreshConnections();
+    } catch (error) {
+      console.error("Failed to decline connection request", error);
+      toast.error("Unable to decline connection request. Please try again.");
+    }
   };
 
   const handleViewConnections = (username: string) => {
-    const allProfiles = userProfile
-      ? { ...MOCK_USER_PROFILES, [userProfile.username]: userProfile }
-      : MOCK_USER_PROFILES;
-    const profile = allProfiles[username];
+    const normalizedUsername = username.trim().toLowerCase();
+    const directory = {
+      ...MOCK_USER_PROFILES,
+      ...connectionDirectory,
+    };
+    if (userProfile) {
+      directory[userProfile.username] = userProfile;
+    }
+    const profile = directory[normalizedUsername];
     if (profile) {
       setViewingConnectionsOf(profile);
       setCurrentView("connections");
@@ -1136,10 +1348,59 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSendConnectRequest = (targetUsername: string) => {
-    setPendingConnections((prev) => [...prev, targetUsername]);
-    // In a real app, you would make an API call here and create a notification for the target user.
-    console.log(`Connection request sent to ${targetUsername}`);
+  const handleSendConnectRequest = async (targetUsername: string) => {
+    const normalizedUsername = targetUsername.trim().toLowerCase();
+
+    if (!normalizedUsername) {
+      return;
+    }
+
+    if (normalizedUsername === userProfile?.username) {
+      toast.error("You cannot connect with yourself.");
+      return;
+    }
+
+    if (
+      userProfile?.connections.includes(normalizedUsername) ||
+      pendingConnections.includes(normalizedUsername)
+    ) {
+      toast("Connection already pending or established.", {
+        icon: "ℹ️",
+      });
+      return;
+    }
+
+    setPendingConnections((prev) =>
+      prev.includes(normalizedUsername) ? prev : [...prev, normalizedUsername]
+    );
+
+    try {
+      const result = (await apiClient.post("/connections", {
+        username: normalizedUsername,
+      })) as { status?: "connected" | "pending" };
+
+      if (result?.status === "connected") {
+        toast.success("Connection established!");
+        setPendingConnections((prev) =>
+          prev.filter((username) => username !== normalizedUsername)
+        );
+      } else {
+        toast.success("Connection request sent.");
+        setPendingConnections((prev) =>
+          prev.includes(normalizedUsername)
+            ? prev
+            : [...prev, normalizedUsername]
+        );
+      }
+
+      await refreshConnections();
+    } catch (error) {
+      console.error("Failed to send connection request", error);
+      setPendingConnections((prev) =>
+        prev.filter((username) => username !== normalizedUsername)
+      );
+      toast.error("Unable to send connection request. Please try again.");
+    }
   };
 
   const handleLoadMoreActivities = useCallback(async () => {
@@ -1198,7 +1459,7 @@ const App: React.FC = () => {
             error={error}
           />
         );
-      case "research":
+      case "research": {
         const allUsers = userProfile
           ? { ...MOCK_USER_PROFILES, [userProfile.username]: userProfile }
           : MOCK_USER_PROFILES;
@@ -1209,6 +1470,7 @@ const App: React.FC = () => {
             onViewProfile={handleViewProfile}
           />
         );
+      }
       case "challenges":
         return (
           <Challenges
@@ -1289,13 +1551,15 @@ const App: React.FC = () => {
         );
       case "connections":
         if (viewingConnectionsOf && userProfile) {
+          const combinedDirectory: Record<string, UserProfile> = {
+            ...MOCK_USER_PROFILES,
+            ...connectionDirectory,
+          };
+          combinedDirectory[userProfile.username] = userProfile;
           return (
             <Connections
               user={viewingConnectionsOf}
-              allUsers={{
-                ...MOCK_USER_PROFILES,
-                [userProfile.username]: userProfile,
-              }}
+              allUsers={combinedDirectory}
               onBack={() => {
                 if (viewingConnectionsOf.username === userProfile?.username) {
                   setCurrentView("profile");

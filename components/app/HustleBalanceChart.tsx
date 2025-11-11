@@ -25,7 +25,7 @@ const HustleBalanceChart: React.FC<HustleBalanceChartProps> = ({
     }, {} as Record<ActivityType, number>);
 
     activities.forEach((activity) => {
-      if (activityCounts.hasOwnProperty(activity.type)) {
+      if (Object.prototype.hasOwnProperty.call(activityCounts, activity.type)) {
         activityCounts[activity.type]++;
       }
     });

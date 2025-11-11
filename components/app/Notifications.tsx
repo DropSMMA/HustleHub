@@ -10,7 +10,7 @@ interface NotificationsProps {
   notifications: Notification[];
   onClearAll: () => void;
   onAcceptConnectRequest: (notificationId: number, fromUsername: string) => void;
-  onDeclineConnectRequest: (notificationId: number) => void;
+  onDeclineConnectRequest: (notificationId: number, fromUsername: string) => void;
   onViewProfile: (username: string) => Promise<void> | void;
   onViewActivity: (postId: string) => void;
 }
@@ -93,7 +93,15 @@ const Notifications: React.FC<NotificationsProps> = ({ notifications, onClearAll
                                             <button onClick={() => onAcceptConnectRequest(notification.id, notification.actor.username)} className="bg-brand-neon text-brand-primary text-xs font-bold py-1 px-3 rounded-md hover:bg-green-400 transition-colors">
                                                 Accept
                                             </button>
-                                            <button onClick={() => onDeclineConnectRequest(notification.id)} className="bg-brand-tertiary text-gray-300 text-xs font-bold py-1 px-3 rounded-md hover:bg-opacity-80 transition-colors">
+                                            <button
+                                              onClick={() =>
+                                                onDeclineConnectRequest(
+                                                  notification.id,
+                                                  notification.actor.username
+                                                )
+                                              }
+                                              className="bg-brand-tertiary text-gray-300 text-xs font-bold py-1 px-3 rounded-md hover:bg-opacity-80 transition-colors"
+                                            >
                                                 Decline
                                             </button>
                                         </div>

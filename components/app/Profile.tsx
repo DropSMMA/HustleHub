@@ -508,7 +508,7 @@ const Profile: React.FC<ProfileProps> = ({
           </div>
         ) : (
           <div className="text-center py-10 text-gray-400 bg-brand-secondary rounded-lg">
-            <p className="font-semibold">You haven't posted yet.</p>
+            <p className="font-semibold">You haven’t posted yet.</p>
             <p className="text-sm">Log your first hustle to see it here!</p>
           </div>
         )}

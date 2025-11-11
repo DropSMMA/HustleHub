@@ -17,12 +17,23 @@ const paramsSchema = z.object({
 const DEFAULT_AVATAR =
   "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { username: string } }
-) {
+const sanitizeUsernames = (values: unknown): string[] =>
+  Array.isArray(values)
+    ? Array.from(
+        new Set(
+          values
+            .map((value) =>
+              typeof value === "string" ? value.trim().toLowerCase() : ""
+            )
+            .filter((value) => value.length > 0)
+        )
+      )
+    : [];
+
+export async function GET(request: Request, context: any) {
   try {
-    const validation = paramsSchema.safeParse({ username: params.username });
+    const usernameParam = context?.params?.username;
+    const validation = paramsSchema.safeParse({ username: usernameParam });
 
     if (!validation.success) {
       const message =
@@ -61,9 +72,7 @@ export async function GET(
         ? userDoc.projects.filter(Boolean).join(", ")
         : userDoc.projects ?? "",
       focuses: Array.isArray(userDoc.focuses) ? userDoc.focuses : [],
-      connections: Array.isArray(userDoc.connections)
-        ? userDoc.connections
-        : [],
+      connections: sanitizeUsernames(userDoc.connections),
       socials:
         Object.keys(normalizedSocials).length > 0
           ? normalizedSocials
@@ -76,11 +85,28 @@ export async function GET(
       ? await User.findOne({
           email: session.user.email.toLowerCase(),
         })
-          .select("_id")
+          .select("_id username connections incomingRequests outgoingRequests")
           .lean()
       : null;
 
     const viewerId = viewer?._id?.toString() ?? null;
+    const viewerUsername = viewer?.username?.toLowerCase();
+    const viewerConnections = sanitizeUsernames(viewer?.connections);
+    const viewerIncoming = sanitizeUsernames(viewer?.incomingRequests);
+    const viewerOutgoing = sanitizeUsernames(viewer?.outgoingRequests);
+
+    let relationship: "self" | "connected" | "incoming" | "outgoing" | "none" =
+      "none";
+
+    if (viewerUsername && viewerUsername === normalizedUser.username) {
+      relationship = "self";
+    } else if (viewerConnections.includes(normalizedUser.username)) {
+      relationship = "connected";
+    } else if (viewerIncoming.includes(normalizedUser.username)) {
+      relationship = "incoming";
+    } else if (viewerOutgoing.includes(normalizedUser.username)) {
+      relationship = "outgoing";
+    }
 
     const posts = await Post.find({ username })
       .sort({ createdAt: -1 })
@@ -122,6 +148,9 @@ export async function GET(
       {
         user: normalizedUser,
         posts: serializedPosts,
+        relationship: {
+          status: relationship,
+        },
       },
       { status: 200 }
     );

@@ -20,6 +20,8 @@ export interface IUser extends Document {
   focuses: FocusArea[];
   socials?: UserSocials;
   connections: string[];
+  incomingRequests: string[];
+  outgoingRequests: string[];
   emailVerified?: Date;
   customerId?: string;
   priceId?: string;
@@ -83,6 +85,14 @@ const userSchema = new Schema<IUser>(
       },
     },
     connections: {
+      type: [String],
+      default: [],
+    },
+    incomingRequests: {
+      type: [String],
+      default: [],
+    },
+    outgoingRequests: {
       type: [String],
       default: [],
     },

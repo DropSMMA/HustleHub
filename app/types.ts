@@ -73,6 +73,8 @@ export interface UserProfile {
         linkedin?: string;
         website?: string;
     };
+    pendingIncoming?: string[];
+    pendingOutgoing?: string[];
 }
 
 export enum NotificationType {
@@ -95,4 +97,13 @@ export interface Notification {
         avatar: string;
         username: string;
     };
+}
+
+export interface ConnectionPreview {
+    username: string;
+    name: string;
+    avatar: string;
+    tagline: string;
+    focuses: FocusArea[];
+    projects?: string;
 }

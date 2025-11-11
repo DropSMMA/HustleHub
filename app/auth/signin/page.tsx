@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 import OnboardingStep1 from "@/components/app/onboarding/OnboardingStep1";
 
-const SignInPage: React.FC = () => {
+const SignInContent: React.FC = () => {
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,6 +84,18 @@ const SignInPage: React.FC = () => {
     </div>
   );
 };
+
+const SignInPage: React.FC = () => (
+  <Suspense
+    fallback={
+      <div className="bg-brand-primary min-h-screen flex items-center justify-center text-white">
+        Loading...
+      </div>
+    }
+  >
+    <SignInContent />
+  </Suspense>
+);
 
 export default SignInPage;
 

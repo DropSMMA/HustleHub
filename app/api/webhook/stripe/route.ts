@@ -80,7 +80,10 @@ export async function POST(req: NextRequest) {
 
         // Update user data + Grant user access to your product. It's a boolean in the database, but could be a number of credits, etc...
         user.priceId = priceId;
-        user.customerId = customerId;
+        user.customerId =
+          typeof customerId === "string"
+            ? customerId
+            : (customerId as Stripe.Customer).id;
         user.hasAccess = true;
         await user.save();
 
@@ -116,7 +119,13 @@ export async function POST(req: NextRequest) {
         const subscription = await stripe.subscriptions.retrieve(
           stripeObject.id
         );
-        const user = await User.findOne({ customerId: subscription.customer });
+        const subscriptionCustomerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id;
+        const user = subscriptionCustomerId
+          ? await User.findOne({ customerId: subscriptionCustomerId })
+          : null;
 
         // Revoke access to your product
         user.hasAccess = false;

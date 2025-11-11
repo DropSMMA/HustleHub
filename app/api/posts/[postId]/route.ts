@@ -5,10 +5,7 @@ import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post from "@/models/Post";
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { postId: string } }
-) {
+export async function DELETE(request: Request, context: any) {
   try {
     const session = await auth();
 
@@ -16,7 +13,13 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { postId } = params;
+    const postIdRaw = context?.params?.postId;
+    const postId =
+      typeof postIdRaw === "string"
+        ? postIdRaw
+        : Array.isArray(postIdRaw)
+        ? postIdRaw[0]
+        : undefined;
 
     if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
       return NextResponse.json(
@@ -42,13 +45,10 @@ export async function DELETE(
     const post = await Post.findById(postId);
 
     if (!post) {
-      return NextResponse.json(
-        { message: "Post not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Post not found." }, { status: 404 });
     }
 
-    if (!post.userId.equals(user._id)) {
+    if (!post.userId.equals(user._id as mongoose.Types.ObjectId)) {
       return NextResponse.json(
         { message: "You are not allowed to delete this post." },
         { status: 403 }
@@ -66,4 +66,3 @@ export async function DELETE(
     );
   }
 }
-

@@ -210,7 +210,7 @@ interface ConnectionsApiResponse {
     outgoing: ConnectionPreview[];
   };
   notifications: Array<{
-    id: number;
+    id: string;
     actor: {
       username: string;
       name: string;
@@ -237,9 +237,7 @@ interface DirectoryUserDTO {
   socials?: Record<string, unknown> | null;
 }
 
-const normalizeDirectoryUser = (
-  user: DirectoryUserDTO
-): UserProfile | null => {
+const normalizeDirectoryUser = (user: DirectoryUserDTO): UserProfile | null => {
   const username =
     typeof user.username === "string" ? user.username.trim().toLowerCase() : "";
 
@@ -259,8 +257,7 @@ const normalizeDirectoryUser = (
       ? user.image.trim()
       : DEFAULT_AVATAR;
 
-  const tagline =
-    typeof user.tagline === "string" ? user.tagline.trim() : "";
+  const tagline = typeof user.tagline === "string" ? user.tagline.trim() : "";
 
   const projectsValue = user.projects;
   let projects = "";
@@ -282,10 +279,10 @@ const normalizeDirectoryUser = (
 
   const focuses = Array.isArray(user.focuses)
     ? (user.focuses
-        .map((focus) =>
-          typeof focus === "string" ? focus.trim() : ""
-        )
-        .filter((focus): focus is FocusArea => isValidFocus(focus)) as FocusArea[])
+        .map((focus) => (typeof focus === "string" ? focus.trim() : ""))
+        .filter((focus): focus is FocusArea =>
+          isValidFocus(focus)
+        ) as FocusArea[])
     : [];
 
   const connections = Array.isArray(user.connections)
@@ -447,6 +444,116 @@ const App: React.FC = () => {
     []
   );
 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const data = (await apiClient.get("/notifications")) as {
+        notifications?: Array<{
+          id?: string;
+          type?: NotificationType;
+          message?: string;
+          timestamp?: string;
+          read?: boolean;
+          postId?: string | null;
+          actor?: {
+            username?: string | null;
+            name?: string | null;
+            avatar?: string | null;
+          };
+        }>;
+      };
+
+      const activityNotifications = Array.isArray(data.notifications)
+        ? data.notifications
+            .map((notification) => {
+              if (
+                !notification ||
+                typeof notification.id !== "string" ||
+                !notification.actor
+              ) {
+                return null;
+              }
+
+              if (
+                typeof notification.type !== "string" ||
+                !Object.values(NotificationType).includes(
+                  notification.type as NotificationType
+                )
+              ) {
+                return null;
+              }
+
+              const actorUsername =
+                typeof notification.actor.username === "string" &&
+                notification.actor.username.length > 0
+                  ? notification.actor.username
+                  : "";
+              const actorName =
+                typeof notification.actor.name === "string" &&
+                notification.actor.name.length > 0
+                  ? notification.actor.name
+                  : actorUsername || "HustleHub Member";
+              const actorAvatar =
+                typeof notification.actor.avatar === "string" &&
+                notification.actor.avatar.length > 0
+                  ? notification.actor.avatar
+                  : DEFAULT_AVATAR;
+              const fallbackUsername =
+                actorName.replace(/\s+/g, "-").toLowerCase() || "member";
+
+              return {
+                id: notification.id,
+                type: notification.type as NotificationType,
+                message:
+                  typeof notification.message === "string" &&
+                  notification.message.length > 0
+                    ? notification.message
+                    : "sent you an update.",
+                timestamp:
+                  typeof notification.timestamp === "string" &&
+                  notification.timestamp.length > 0
+                    ? notification.timestamp
+                    : new Date().toISOString(),
+                read: Boolean(notification.read),
+                postId:
+                  typeof notification.postId === "string" &&
+                  notification.postId.length > 0
+                    ? notification.postId
+                    : undefined,
+                actor: {
+                  username: actorUsername || fallbackUsername,
+                  name: actorName,
+                  avatar: actorAvatar,
+                },
+              } as Notification;
+            })
+            .filter(
+              (notification): notification is Notification =>
+                notification !== null
+            )
+        : [];
+
+      setNotifications((prev) => {
+        const connectNotifications = prev.filter(
+          (notification) =>
+            notification.type === NotificationType.ConnectRequest
+        );
+
+        const merged = [...activityNotifications, ...connectNotifications];
+        const seen = new Set<string>();
+
+        return merged.filter((notification) => {
+          if (seen.has(notification.id)) {
+            return false;
+          }
+          seen.add(notification.id);
+          return true;
+        });
+      });
+    } catch (error) {
+      console.error("Failed to load activity notifications", error);
+    }
+  }, []);
+
   const sessionUserId = session?.user?.id ?? null;
 
   const refreshConnections = useCallback(async () => {
@@ -599,6 +706,12 @@ const App: React.FC = () => {
   }, [sessionStatus, userProfile?.username, refreshConnections]);
 
   useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      void refreshNotifications();
+    }
+  }, [sessionStatus, refreshNotifications]);
+
+  useEffect(() => {
     if (!userProfile?.username) {
       setResearchUsers([]);
       setResearchError(null);
@@ -677,11 +790,7 @@ const App: React.FC = () => {
   }, [sessionStatus, sessionUserId]);
 
   useEffect(() => {
-    if (
-      sessionStatus !== "authenticated" ||
-      userProfile ||
-      isOnboarding
-    ) {
+    if (sessionStatus !== "authenticated" || userProfile || isOnboarding) {
       return;
     }
 
@@ -1363,8 +1472,20 @@ const App: React.FC = () => {
     []
   );
 
-  const handleClearNotifications = () => {
+  const handleClearNotifications = async () => {
+    const previousNotifications = notifications.map((notification) => ({
+      ...notification,
+    }));
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+
+    try {
+      await apiClient.patch("/notifications", { action: "markAllRead" });
+    } catch (error) {
+      console.error("Failed to clear notifications", error);
+      toast.error("Unable to mark notifications as read. Please try again.");
+      setNotifications(previousNotifications);
+      void refreshNotifications();
+    }
   };
 
   const handleUpdateProfile = (updatedProfile: UserProfile) => {
@@ -1424,7 +1545,7 @@ const App: React.FC = () => {
   };
 
   const handleAcceptConnectRequest = async (
-    notificationId: number,
+    notificationId: string,
     fromUsername: string
   ) => {
     const normalizedUsername = fromUsername.trim().toLowerCase();
@@ -1486,7 +1607,7 @@ const App: React.FC = () => {
   };
 
   const handleDeclineConnectRequest = async (
-    notificationId: number,
+    notificationId: string,
     fromUsername: string
   ) => {
     const normalizedUsername = fromUsername.trim().toLowerCase();

@@ -5,6 +5,8 @@ import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post, { type IReply } from "@/models/Post";
+import Notification from "@/models/Notification";
+import { NotificationType } from "@/app/types";
 
 const commentInputSchema = z.object({
   text: z.string().trim().min(1).max(500),
@@ -108,6 +110,54 @@ export async function POST(request: Request, context: any) {
     }
 
     await post.save();
+
+    const recipientId =
+      post.userId instanceof mongoose.Types.ObjectId
+        ? post.userId
+        : new mongoose.Types.ObjectId(post.userId);
+    const isSelfComment = recipientId.toString() === user._id.toString();
+
+    if (!isSelfComment) {
+      const actorUsername =
+        typeof user.username === "string" && user.username.length > 0
+          ? user.username
+          : typeof session.user?.email === "string"
+          ? session.user.email.split("@")[0] ?? user._id.toString()
+          : user._id.toString();
+      const actorName =
+        typeof user.name === "string" && user.name.length > 0
+          ? user.name
+          : typeof session.user?.name === "string"
+          ? session.user.name
+          : actorUsername;
+      const actorAvatar =
+        typeof user.image === "string" && user.image.length > 0
+          ? user.image
+          : typeof session.user?.image === "string" &&
+            session.user.image.length > 0
+          ? session.user.image
+          : DEFAULT_AVATAR;
+
+      try {
+        await Notification.create({
+          recipient: recipientId,
+          actorId: user._id,
+          actorUsername,
+          actorName,
+          actorAvatar,
+          type: NotificationType.Comment,
+          message: "commented on your post.",
+          read: false,
+          postId: post._id,
+          commentId,
+        });
+      } catch (notificationError) {
+        console.error(
+          "[posts][comments][notification]",
+          notificationError
+        );
+      }
+    }
 
     return NextResponse.json(
       {

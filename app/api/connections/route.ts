@@ -63,7 +63,9 @@ const getSessionUser = async () => {
   const session = await auth();
 
   if (!session?.user?.email) {
-    return { response: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
+    return {
+      response: NextResponse.json({ message: "Unauthorized" }, { status: 401 }),
+    };
   }
 
   await connectMongo();
@@ -108,7 +110,11 @@ export async function GET() {
     const outgoingUsernames = sanitizeUsernames(viewer.outgoingRequests);
 
     const uniqueUsernames = Array.from(
-      new Set([...connectionUsernames, ...incomingUsernames, ...outgoingUsernames])
+      new Set([
+        ...connectionUsernames,
+        ...incomingUsernames,
+        ...outgoingUsernames,
+      ])
     );
 
     const users =
@@ -116,7 +122,9 @@ export async function GET() {
         ? await User.find({
             username: { $in: uniqueUsernames },
           })
-            .select("username name image tagline focuses projects connections socials")
+            .select(
+              "username name image tagline focuses projects connections socials"
+            )
             .lean()
         : [];
 
@@ -150,7 +158,7 @@ export async function GET() {
           outgoing: buildPreviewList(outgoingUsernames),
         },
         notifications: buildPreviewList(incomingUsernames).map((request) => ({
-          id: deterministicNotificationId(request.username),
+          id: deterministicNotificationId(request.username).toString(),
           actor: {
             username: request.username,
             name: request.name,
@@ -193,10 +201,7 @@ export async function POST(request: Request) {
     const target = await User.findOne({ username: targetUsername });
 
     if (!target) {
-      return NextResponse.json(
-        { message: "User not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
     const viewerConnections = new Set(sanitizeUsernames(viewer.connections));
@@ -208,10 +213,7 @@ export async function POST(request: Request) {
     const targetOutgoing = new Set(sanitizeUsernames(target.outgoingRequests));
 
     if (viewerConnections.has(targetUsername)) {
-      return NextResponse.json(
-        { status: "connected" },
-        { status: 200 }
-      );
+      return NextResponse.json({ status: "connected" }, { status: 200 });
     }
 
     let status: "connected" | "pending" = "pending";
@@ -283,10 +285,7 @@ export async function PATCH(request: Request) {
     const target = await User.findOne({ username: targetUsername });
 
     if (!target) {
-      return NextResponse.json(
-        { message: "User not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
     const viewerConnections = new Set(sanitizeUsernames(viewer.connections));
@@ -326,10 +325,7 @@ export async function PATCH(request: Request) {
     await viewer.save();
     await target.save();
 
-    return NextResponse.json(
-      { status: payload.action },
-      { status: 200 }
-    );
+    return NextResponse.json({ status: payload.action }, { status: 200 });
   } catch (error) {
     console.error("[connections][PATCH]", error);
     if (error instanceof z.ZodError) {
@@ -344,4 +340,3 @@ export async function PATCH(request: Request) {
     );
   }
 }
-

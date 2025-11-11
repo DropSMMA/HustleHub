@@ -9,11 +9,59 @@ import { UserPlusIcon } from './icons/UserPlusIcon';
 interface NotificationsProps {
   notifications: Notification[];
   onClearAll: () => void;
-  onAcceptConnectRequest: (notificationId: number, fromUsername: string) => void;
-  onDeclineConnectRequest: (notificationId: number, fromUsername: string) => void;
+  onAcceptConnectRequest: (notificationId: string, fromUsername: string) => void;
+  onDeclineConnectRequest: (notificationId: string, fromUsername: string) => void;
   onViewProfile: (username: string) => Promise<void> | void;
   onViewActivity: (postId: string) => void;
 }
+
+const formatNotificationTimestamp = (raw: string) => {
+    if (!raw) {
+        return "";
+    }
+
+    const normalized = raw.trim();
+
+    if (!normalized) {
+        return "";
+    }
+
+    const lower = normalized.toLowerCase();
+
+    if (lower === "just now" || lower.endsWith("ago")) {
+        return normalized;
+    }
+
+    const parsed = new Date(normalized);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return normalized;
+    }
+
+    const now = Date.now();
+    const diffSeconds = Math.max(0, Math.floor((now - parsed.getTime()) / 1000));
+
+    if (diffSeconds < 60) {
+        return "Just now";
+    }
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+        return `${diffMinutes}m ago`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+        return `${diffHours}h ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) {
+        return `${diffDays}d ago`;
+    }
+
+    return parsed.toLocaleDateString();
+};
 
 const NotificationIcon: React.FC<{ type: NotificationType }> = ({ type }) => {
     switch (type) {
@@ -48,6 +96,7 @@ const Notifications: React.FC<NotificationsProps> = ({ notifications, onClearAll
                 <div className="space-y-3">
                     {notifications.map(notification => {
                         const showActorName = ![NotificationType.Challenge, NotificationType.System].includes(notification.type);
+                        const formattedTimestamp = formatNotificationTimestamp(notification.timestamp);
                         return (
                             <div key={notification.id} className={`bg-brand-secondary rounded-lg flex items-start space-x-4 transition-colors ${!notification.read ? 'border-l-4 border-brand-neon' : 'opacity-70'} p-4`}>
                                 <div className={`flex-shrink-0 mt-1 ${!notification.read ? 'text-brand-neon' : 'text-gray-400'}`}>
@@ -86,7 +135,7 @@ const Notifications: React.FC<NotificationsProps> = ({ notifications, onClearAll
                                                 <span dangerouslySetInnerHTML={{ __html: notification.message }} />
                                             </div>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">{notification.timestamp}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{formattedTimestamp}</p>
                                     </div>
                                     {notification.type === NotificationType.ConnectRequest && !notification.read && (
                                         <div className="flex space-x-2 mt-2">

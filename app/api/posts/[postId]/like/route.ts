@@ -4,6 +4,11 @@ import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post from "@/models/Post";
+import Notification from "@/models/Notification";
+import { NotificationType } from "@/app/types";
+
+const DEFAULT_AVATAR =
+  "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 
 export async function POST(request: Request, context: any) {
   try {
@@ -56,12 +61,74 @@ export async function POST(request: Request, context: any) {
     );
     const alreadyLiked = currentLikedBy.includes(userIdString);
 
+    const recipientId =
+      post.userId instanceof mongoose.Types.ObjectId
+        ? post.userId
+        : new mongoose.Types.ObjectId(post.userId);
+
+    const isSelfLike = recipientId.toString() === user._id.toString();
+
     if (alreadyLiked) {
       post.likedBy = post.likedBy.filter(
         (id) => id.toString() !== userIdString
       );
+
+      if (!isSelfLike) {
+        await Notification.findOneAndDelete({
+          recipient: recipientId,
+          actorId: user._id,
+          type: NotificationType.Kudo,
+          postId: post._id,
+        });
+      }
     } else {
       post.likedBy.push(user._id as mongoose.Types.ObjectId);
+
+      if (!isSelfLike) {
+        const actorUsername =
+          typeof user.username === "string" && user.username.length > 0
+            ? user.username
+            : typeof session.user?.email === "string"
+            ? session.user.email.split("@")[0] ?? user._id.toString()
+            : user._id.toString();
+        const actorName =
+          typeof user.name === "string" && user.name.length > 0
+            ? user.name
+            : typeof session.user?.name === "string"
+            ? session.user.name
+            : actorUsername;
+        const actorAvatar =
+          typeof user.image === "string" && user.image.length > 0
+            ? user.image
+            : typeof session.user?.image === "string" &&
+              session.user.image.length > 0
+            ? session.user.image
+            : DEFAULT_AVATAR;
+
+        await Notification.findOneAndUpdate(
+          {
+            recipient: recipientId,
+            actorId: user._id,
+            type: NotificationType.Kudo,
+            postId: post._id,
+          },
+          {
+            $set: {
+              actorUsername,
+              actorName,
+              actorAvatar,
+              message: "liked your post.",
+              read: false,
+            },
+            $setOnInsert: {
+              recipient: recipientId,
+              actorId: user._id,
+              postId: post._id,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      }
     }
 
     post.kudos = post.likedBy.length;

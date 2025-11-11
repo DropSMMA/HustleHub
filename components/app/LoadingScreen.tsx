@@ -1,11 +1,11 @@
 import React from "react";
-import logo from "@/app/iconnobackground.svg";
+import logo from "@/app/Logonoback.png";
 
 const LoadingScreen: React.FC = () => {
   const logoSrc =
     typeof logo === "string"
       ? logo
-      : (logo as { src?: string }).src ?? "/iconnobackground.svg";
+      : (logo as { src?: string }).src ?? "/Logonoback.png";
 
   return (
     <div className="bg-brand-primary min-h-screen flex items-center justify-center animate-fade-in">

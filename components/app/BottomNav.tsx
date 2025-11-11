@@ -31,8 +31,13 @@ const NavItem: React.FC<{
 
 const BottomNav: React.FC<BottomNavProps> = ({ currentView, setCurrentView }) => {
     return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-brand-secondary/90 backdrop-blur-lg border-t border-brand-tertiary shadow-lg">
-            <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+        <nav
+            className="fixed bottom-0 left-0 right-0 bg-brand-secondary/90 backdrop-blur-lg border-t border-brand-tertiary shadow-lg"
+            style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
+            }}
+        >
+            <div className="flex justify-around items-center max-w-lg mx-auto py-3">
                 <NavItem
                     label="Feed"
                     icon={<HomeIcon />}

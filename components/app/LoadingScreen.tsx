@@ -1,16 +1,22 @@
-import React from 'react';
+import React from "react";
+import logo from "@/app/iconnobackground.svg";
 
 const LoadingScreen: React.FC = () => {
-    return (
-        <div className="bg-brand-primary min-h-screen flex flex-col items-center justify-center text-white animate-fade-in">
-            <div className="relative overflow-hidden group">
-                 <h1 className="text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-brand-neon to-green-400 text-transparent bg-clip-text">
-                    HustleHub
-                </h1>
-                <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
-            </div>
-        </div>
-    );
+  const logoSrc =
+    typeof logo === "string"
+      ? logo
+      : (logo as { src?: string }).src ?? "/iconnobackground.svg";
+
+  return (
+    <div className="bg-brand-primary min-h-screen flex items-center justify-center animate-fade-in">
+      <img
+        src={logoSrc}
+        alt="HustleHub logo"
+        className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 object-contain"
+        loading="eager"
+      />
+    </div>
+  );
 };
 
 export default LoadingScreen;

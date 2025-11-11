@@ -364,7 +364,8 @@ const App: React.FC = () => {
   const [weeklyInsight, setWeeklyInsight] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isOnboarding, setIsOnboarding] = useState<boolean>(true);
+  const [isOnboarding, setIsOnboarding] = useState<boolean>(false);
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(
     null
@@ -610,18 +611,26 @@ const App: React.FC = () => {
       return;
     }
 
+    if (sessionStatus === "loading") {
+      return;
+    }
+
     if (sessionStatus === "unauthenticated") {
       window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
       window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
       window.localStorage.removeItem(USER_PROFILE_OWNER_STORAGE_KEY);
       setUserProfile(null);
       setIsOnboarding(true);
+      setHasLoadedPosts(false);
+      setIsProfileLoading(false);
       return;
     }
 
     if (sessionStatus !== "authenticated" || !sessionUserId) {
       return;
     }
+
+    setIsProfileLoading(true);
 
     const storedOwnerId = window.localStorage.getItem(
       USER_PROFILE_OWNER_STORAGE_KEY
@@ -636,6 +645,8 @@ const App: React.FC = () => {
       );
       setUserProfile(null);
       setIsOnboarding(true);
+      setHasLoadedPosts(false);
+      setIsProfileLoading(false);
       return;
     }
 
@@ -651,22 +662,32 @@ const App: React.FC = () => {
         const parsedProfile = JSON.parse(storedProfile) as UserProfile;
         setUserProfile(parsedProfile);
         setIsOnboarding(false);
+        setIsProfileLoading(false);
       } catch (error) {
         console.error("Failed to restore onboarding state", error);
         window.localStorage.removeItem(ONBOARDING_COMPLETE_STORAGE_KEY);
         window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
         window.localStorage.removeItem(USER_PROFILE_OWNER_STORAGE_KEY);
+        setIsProfileLoading(true);
       }
+      return;
     }
+
+    setIsProfileLoading(true);
   }, [sessionStatus, sessionUserId]);
 
   useEffect(() => {
-    if (sessionStatus !== "authenticated" || userProfile) {
+    if (
+      sessionStatus !== "authenticated" ||
+      userProfile ||
+      isOnboarding
+    ) {
       return;
     }
 
     const fetchUserProfile = async () => {
       try {
+        setIsProfileLoading(true);
         const response = await fetch("/api/user/profile", {
           method: "GET",
           headers: {
@@ -757,11 +778,19 @@ const App: React.FC = () => {
       } catch (error) {
         console.error("Error loading user profile", error);
         setIsOnboarding(true);
+      } finally {
+        setIsProfileLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [sessionStatus, userProfile, sessionUserId, refreshConnections]);
+  }, [
+    sessionStatus,
+    userProfile,
+    sessionUserId,
+    refreshConnections,
+    isOnboarding,
+  ]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !userProfile || hasLoadedPosts) {
@@ -1599,12 +1628,18 @@ const App: React.FC = () => {
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
-  if (isOnboarding) {
-    return <Onboarding onComplete={handleCompleteOnboarding} />;
+  const shouldShowLoadingScreen =
+    isPreparingWorkspace ||
+    sessionStatus === "loading" ||
+    isProfileLoading ||
+    (sessionStatus === "authenticated" && !hasLoadedPosts && !isOnboarding);
+
+  if (shouldShowLoadingScreen) {
+    return <LoadingScreen />;
   }
 
-  if (isPreparingWorkspace) {
-    return <LoadingScreen />;
+  if (isOnboarding) {
+    return <Onboarding onComplete={handleCompleteOnboarding} />;
   }
 
   const commonFeedProps = {

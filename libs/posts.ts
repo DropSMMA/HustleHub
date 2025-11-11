@@ -53,6 +53,10 @@ const formatRelativeTime = (dateString: string): string => {
     const hours = Math.floor(diff / hour);
     return `${hours}h ago`;
   }
+  if (diff < day * 7) {
+    const days = Math.floor(diff / day);
+    return `${days}d ago`;
+  }
   return date.toLocaleDateString();
 };
 

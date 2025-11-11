@@ -188,6 +188,10 @@ const DEFAULT_AVATAR =
 
 const DEFAULT_POST_LIMIT = 20;
 
+const focusValues = new Set<string>(Object.values(FocusArea));
+const isValidFocus = (focus: string): focus is FocusArea =>
+  typeof focus === "string" && focusValues.has(focus);
+
 const mapPreviewToUserProfile = (preview: ConnectionPreview): UserProfile => ({
   username: preview.username,
   name: preview.name || preview.username,
@@ -219,6 +223,102 @@ interface ConnectionsApiResponse {
 type FetchPostsOptions = {
   cursor?: string | null;
   replace?: boolean;
+};
+
+interface DirectoryUserDTO {
+  username?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  image?: string | null;
+  tagline?: string | null;
+  projects?: string | string[] | null;
+  focuses?: unknown;
+  connections?: unknown;
+  socials?: Record<string, unknown> | null;
+}
+
+const normalizeDirectoryUser = (
+  user: DirectoryUserDTO
+): UserProfile | null => {
+  const username =
+    typeof user.username === "string" ? user.username.trim().toLowerCase() : "";
+
+  if (!username) {
+    return null;
+  }
+
+  const name =
+    typeof user.name === "string" && user.name.trim().length > 0
+      ? user.name.trim()
+      : username;
+
+  const avatarCandidate =
+    typeof user.avatar === "string" && user.avatar.trim().length > 0
+      ? user.avatar.trim()
+      : typeof user.image === "string" && user.image.trim().length > 0
+      ? user.image.trim()
+      : DEFAULT_AVATAR;
+
+  const tagline =
+    typeof user.tagline === "string" ? user.tagline.trim() : "";
+
+  const projectsValue = user.projects;
+  let projects = "";
+
+  if (Array.isArray(projectsValue)) {
+    projects = projectsValue
+      .map((entry) =>
+        typeof entry === "string" ? entry.trim() : String(entry ?? "")
+      )
+      .filter((entry) => entry.length > 0)
+      .join(", ");
+  } else if (typeof projectsValue === "string") {
+    projects = projectsValue
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .join(", ");
+  }
+
+  const focuses = Array.isArray(user.focuses)
+    ? (user.focuses
+        .map((focus) =>
+          typeof focus === "string" ? focus.trim() : ""
+        )
+        .filter((focus): focus is FocusArea => isValidFocus(focus)) as FocusArea[])
+    : [];
+
+  const connections = Array.isArray(user.connections)
+    ? user.connections
+        .map((connection) =>
+          typeof connection === "string" ? connection.trim().toLowerCase() : ""
+        )
+        .filter((connection) => connection.length > 0)
+    : [];
+
+  const socials =
+    user.socials && typeof user.socials === "object"
+      ? Object.entries(user.socials).reduce((acc, [key, value]) => {
+          if (typeof value === "string") {
+            const trimmed = value.trim();
+            if (trimmed.length > 0) {
+              acc[key as keyof UserProfile["socials"]] = trimmed;
+            }
+          }
+          return acc;
+        }, {} as NonNullable<UserProfile["socials"]>)
+      : undefined;
+
+  return {
+    username,
+    name,
+    avatar: avatarCandidate,
+    tagline,
+    projects,
+    focuses,
+    connections,
+    socials: socials && Object.keys(socials).length > 0 ? socials : undefined,
+  };
 };
 const MOCK_CHALLENGES: Challenge[] = [
   {
@@ -284,6 +384,11 @@ const App: React.FC = () => {
   const [connectionDirectory, setConnectionDirectory] = useState<
     Record<string, UserProfile>
   >({});
+  const [researchUsers, setResearchUsers] = useState<UserProfile[]>([]);
+  const [isResearchLoading, setIsResearchLoading] = useState<boolean>(false);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const [hasRequestedResearch, setHasRequestedResearch] =
+    useState<boolean>(false);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(
     null
   );
@@ -432,11 +537,73 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const fetchResearchDirectory = useCallback(
+    async (options: { force?: boolean } = {}) => {
+      if (isResearchLoading) {
+        return;
+      }
+
+      if (!options.force && hasRequestedResearch) {
+        return;
+      }
+
+      setHasRequestedResearch(true);
+      setIsResearchLoading(true);
+      setResearchError(null);
+
+      try {
+        const payload = (await apiClient.get("/user/directory")) as {
+          users?: DirectoryUserDTO[];
+        };
+
+        const directory = Array.isArray(payload?.users) ? payload.users : [];
+
+        const normalized = directory
+          .map((user) => normalizeDirectoryUser(user))
+          .filter((profile): profile is UserProfile => profile !== null);
+
+        setResearchUsers(normalized);
+
+        if (normalized.length > 0) {
+          setConnectionDirectory((prev) => {
+            const updated = { ...prev };
+            normalized.forEach((profile) => {
+              updated[profile.username] = {
+                ...(updated[profile.username] ?? profile),
+                ...profile,
+              };
+            });
+            if (userProfile) {
+              updated[userProfile.username] = userProfile;
+            }
+            return updated;
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load user directory", error);
+        setResearchError(
+          "Unable to load founders right now. Please try again."
+        );
+      } finally {
+        setIsResearchLoading(false);
+      }
+    },
+    [hasRequestedResearch, isResearchLoading, userProfile]
+  );
+
   useEffect(() => {
     if (sessionStatus === "authenticated" && userProfile?.username) {
       void refreshConnections();
     }
   }, [sessionStatus, userProfile?.username, refreshConnections]);
+
+  useEffect(() => {
+    if (!userProfile?.username) {
+      setResearchUsers([]);
+      setResearchError(null);
+      setHasRequestedResearch(false);
+    }
+  }, [userProfile?.username]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -615,6 +782,22 @@ const App: React.FC = () => {
 
     loadPosts();
   }, [sessionStatus, userProfile, hasLoadedPosts, fetchPosts]);
+
+  useEffect(() => {
+    if (
+      currentView !== "research" ||
+      sessionStatus !== "authenticated" ||
+      !userProfile?.username
+    ) {
+      return;
+    }
+    void fetchResearchDirectory();
+  }, [
+    currentView,
+    sessionStatus,
+    userProfile?.username,
+    fetchResearchDirectory,
+  ]);
 
   const handleCompleteOnboarding = (profile: UserProfile) => {
     const enrichedProfile: UserProfile = {
@@ -1460,14 +1643,21 @@ const App: React.FC = () => {
           />
         );
       case "research": {
-        const allUsers = userProfile
+        const fallbackDirectory = userProfile
           ? { ...MOCK_USER_PROFILES, [userProfile.username]: userProfile }
           : MOCK_USER_PROFILES;
+        const combinedUsers =
+          researchUsers.length > 0
+            ? researchUsers
+            : Object.values(fallbackDirectory);
         return (
           <Research
-            allUsers={Object.values(allUsers)}
+            allUsers={combinedUsers}
             currentUser={userProfile}
             onViewProfile={handleViewProfile}
+            isLoading={isResearchLoading}
+            error={researchError}
+            onRetry={() => void fetchResearchDirectory({ force: true })}
           />
         );
       }

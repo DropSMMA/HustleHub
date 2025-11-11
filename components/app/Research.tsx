@@ -6,12 +6,18 @@ interface ResearchProps {
   allUsers: UserProfile[];
   currentUser: UserProfile | null;
   onViewProfile: (username: string) => Promise<void> | void;
+  isLoading: boolean;
+  error: string | null;
+  onRetry?: () => void;
 }
 
 const Research: React.FC<ResearchProps> = ({
   allUsers,
   currentUser,
   onViewProfile,
+  isLoading,
+  error,
+  onRetry,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -26,6 +32,67 @@ const Research: React.FC<ResearchProps> = ({
       (user.tagline &&
         user.tagline.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const renderResults = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center py-10">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-neon"></div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-10 text-red-400 bg-brand-secondary rounded-lg space-y-3">
+          <p className="font-semibold text-lg">Unable to load founders.</p>
+          <p className="text-sm text-red-300">{error}</p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-brand-neon text-brand-primary font-semibold hover:bg-green-400 transition-colors"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (filteredUsers.length === 0) {
+      return (
+        <div className="text-center py-10 text-gray-400 bg-brand-secondary rounded-lg">
+          <p className="font-semibold text-lg">No hustlers found.</p>
+          <p className="text-sm">Try a different search term.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {filteredUsers.map((profile) => (
+          <button
+            key={profile.username}
+            onClick={() => void onViewProfile(profile.username)}
+            className="w-full bg-brand-secondary p-3 rounded-lg flex items-center space-x-4 transition-colors hover:bg-brand-tertiary text-left"
+          >
+            <img
+              src={profile.avatar}
+              alt={profile.name}
+              className="h-12 w-12 rounded-full object-cover"
+            />
+            <div className="flex-grow">
+              <p className="font-bold text-white">{profile.name}</p>
+              {profile.tagline && (
+                <p className="text-sm text-gray-400 truncate">{profile.tagline}</p>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 max-w-lg space-y-4 animate-fade-in">
@@ -44,36 +111,7 @@ const Research: React.FC<ResearchProps> = ({
         />
       </div>
 
-      {filteredUsers.length > 0 ? (
-        <div className="space-y-3">
-          {filteredUsers.map((profile) => (
-            <button
-              key={profile.username}
-              onClick={() => void onViewProfile(profile.username)}
-              className="w-full bg-brand-secondary p-3 rounded-lg flex items-center space-x-4 transition-colors hover:bg-brand-tertiary text-left"
-            >
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                className="h-12 w-12 rounded-full object-cover"
-              />
-              <div className="flex-grow">
-                <p className="font-bold text-white">{profile.name}</p>
-                {profile.tagline && (
-                  <p className="text-sm text-gray-400 truncate">
-                    {profile.tagline}
-                  </p>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-10 text-gray-400 bg-brand-secondary rounded-lg">
-          <p className="font-semibold text-lg">No hustlers found.</p>
-          <p className="text-sm">Try a different search term.</p>
-        </div>
-      )}
+      {renderResults()}
     </div>
   );
 };

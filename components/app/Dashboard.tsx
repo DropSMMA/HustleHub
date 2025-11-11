@@ -83,16 +83,47 @@ const WeeklyInsights: React.FC<WeeklyInsightsProps> = ({
   error,
 }) => {
   const recentActivities = useMemo(() => {
-    return activities.filter((a) => {
-      if (a.timestamp === "Just now" || a.timestamp.includes("h ago"))
-        return true;
-      const match = a.timestamp.match(/(\d+)\s*d\s*ago/);
-      if (match) {
-        const daysAgo = parseInt(match[1], 10);
-        return daysAgo <= 7;
+    const now = Date.now();
+    const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
+
+    const isWithinWindow = (timestamp: string): boolean => {
+      if (!timestamp) {
+        return false;
       }
+      if (timestamp === "Just now") {
+        return true;
+      }
+
+      const relativeMatch = timestamp.match(/(\d+)\s*([mhd])\s*ago/i);
+      if (relativeMatch) {
+        const value = parseInt(relativeMatch[1], 10);
+        const unit = relativeMatch[2].toLowerCase();
+        if (Number.isNaN(value)) {
+          return false;
+        }
+
+        switch (unit) {
+          case "m":
+            return value * 60 * 1000 <= maxAgeMs;
+          case "h":
+            return value * 60 * 60 * 1000 <= maxAgeMs;
+          case "d":
+            return value <= 7;
+          default:
+            return false;
+        }
+      }
+
+      const parsedDate = new Date(timestamp);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        const diff = now - parsedDate.getTime();
+        return diff >= 0 && diff <= maxAgeMs;
+      }
+
       return false;
-    });
+    };
+
+    return activities.filter((activity) => isWithinWindow(activity.timestamp));
   }, [activities]);
 
   useEffect(() => {

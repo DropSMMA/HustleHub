@@ -33,7 +33,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [description, setDescription] = useState("");
   const [stats, setStats] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageData, setImageData] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -42,8 +42,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
     setType(null);
     setDescription("");
     setStats("");
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
     setImagePreview(null);
-    setImageData(null);
+    setImageFile(null);
     setShowTypeSelector(false);
     setIsSubmitting(false);
   };
@@ -54,17 +57,32 @@ const LogActivity: React.FC<LogActivityProps> = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = typeof reader.result === "string" ? reader.result : null;
-        setImagePreview(result);
-        setImageData(result);
-      };
-      reader.readAsDataURL(file);
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
     }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
+    setImageFile(file);
   };
 
   const handleSelectType = (selectedType: ActivityType) => {
@@ -78,14 +96,37 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
     setIsSubmitting(true);
 
-    const payload = {
-      type,
-      description: description.trim(),
-      stats: stats.trim() ? stats.trim() : undefined,
-      image: imageData ?? undefined,
-    };
-
     try {
+      let imageUrl: string | undefined;
+
+      if (imageFile) {
+        const { uploadUrl, fileUrl } = (await apiClient.post("/uploads", {
+          fileName: imageFile.name,
+          fileType: imageFile.type,
+        })) as { uploadUrl: string; fileUrl: string };
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": imageFile.type,
+          },
+          body: imageFile,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Image upload failed.");
+        }
+
+        imageUrl = fileUrl;
+      }
+
+      const payload = {
+        type,
+        description: description.trim(),
+        stats: stats.trim() ? stats.trim() : undefined,
+        image: imageUrl,
+      };
+
       const { post } = (await apiClient.post("/posts", payload)) as {
         post: PostDTO;
       };
@@ -173,8 +214,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   />
                   <button
                     onClick={() => {
+                      if (imagePreview) {
+                        URL.revokeObjectURL(imagePreview);
+                      }
                       setImagePreview(null);
-                      setImageData(null);
+                      setImageFile(null);
                     }}
                     className="absolute top-2 right-2 bg-black/50 p-1 rounded-full text-white hover:bg-black/80"
                   >

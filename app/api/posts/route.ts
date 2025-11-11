@@ -9,8 +9,7 @@ import { ActivityType } from "@/app/types";
 
 type SerializedPost = Record<string, any>;
 
-const isValidImage = (value: string) =>
-  value.startsWith("data:") || /^https?:\/\//.test(value);
+const isValidImage = (value: string) => /^https?:\/\//.test(value);
 
 const createPostSchema = z.object({
   type: z.nativeEnum(ActivityType),
@@ -20,7 +19,7 @@ const createPostSchema = z.object({
     .string()
     .trim()
     .refine((value) => !value || isValidImage(value), {
-      message: "Image must be a valid URL or data URI.",
+      message: "Image must be a valid http(s) URL.",
     })
     .optional(),
 });

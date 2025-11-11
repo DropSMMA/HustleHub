@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
+import { deleteS3ObjectByUrl } from "@/libs/s3-utils";
 import User from "@/models/User";
 import { FocusArea } from "@/app/types";
 
@@ -15,8 +17,7 @@ const socialsSchema = z
   .partial()
   .optional();
 
-const isValidAvatar = (value: string) =>
-  value.startsWith("data:") || /^https?:\/\//.test(value);
+const isValidAvatar = (value: string) => /^https?:\/\//.test(value);
 
 const updateProfileSchema = z
   .object({
@@ -26,7 +27,7 @@ const updateProfileSchema = z
       .string()
       .trim()
       .refine((value) => isValidAvatar(value), {
-        message: "Avatar must be a valid URL or data URI.",
+        message: "Avatar must be a valid URL.",
       })
       .optional(),
     projects: z.array(z.string().trim().max(120)).optional(),
@@ -106,6 +107,11 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const previousAvatar =
+      typeof user.image === "string" && user.image.length > 0
+        ? user.image
+        : null;
+
     if (payload.name !== undefined) {
       user.name = payload.name;
     }
@@ -147,6 +153,14 @@ export async function PATCH(request: Request) {
     }
 
     const updatedUser = await user.save();
+
+    if (
+      payload.avatar !== undefined &&
+      previousAvatar &&
+      previousAvatar !== updatedUser.image
+    ) {
+      await deleteS3ObjectByUrl(previousAvatar);
+    }
 
     return NextResponse.json({ user: updatedUser.toJSON() }, { status: 200 });
   } catch (error) {

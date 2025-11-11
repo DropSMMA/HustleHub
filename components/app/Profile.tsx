@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { UserProfile, FocusArea, Activity, View } from "@/app/types";
 import apiClient from "@/libs/api";
@@ -96,6 +96,8 @@ const Profile: React.FC<ProfileProps> = ({
     string | null
   >(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatarObjectUrlRef = useRef<string | null>(null);
 
   const toggleComments = (activityId: string) => {
     setOpenCommentSectionId((prevId) =>
@@ -106,8 +108,22 @@ const Profile: React.FC<ProfileProps> = ({
   useEffect(() => {
     if (!isEditing) {
       setEditedProfile(userProfile);
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+      setAvatarFile(null);
     }
   }, [userProfile, isEditing]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   if (!userProfile || !editedProfile) {
     return (
@@ -136,16 +152,30 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && editedProfile) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditedProfile((prev) => ({
-          ...prev!,
-          avatar: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(e.target.files[0]);
+    const file = e.target.files?.[0];
+
+    if (!file || !editedProfile) {
+      return;
     }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file.");
+      return;
+    }
+
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = null;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = objectUrl;
+    setAvatarFile(file);
+    setEditedProfile((prev) => ({
+      ...prev!,
+      avatar: objectUrl,
+    }));
+    e.target.value = "";
   };
 
   const toggleFocus = (focus: FocusArea) => {
@@ -205,18 +235,63 @@ const Profile: React.FC<ProfileProps> = ({
         )
       : undefined;
 
-    const payload = {
-      name: trimmedName,
-      tagline: editedProfile.tagline?.trim() ?? "",
-      avatar: editedProfile.avatar,
-      focuses: editedProfile.focuses,
-      projects: projectsArray,
-      socials: socialsPayload,
-    };
-
     setIsSaving(true);
 
     try {
+      let avatarUrl =
+        editedProfile.avatar && !editedProfile.avatar.startsWith("blob:")
+          ? editedProfile.avatar.trim()
+          : undefined;
+      let fileToUpload = avatarFile;
+
+      if (!fileToUpload && avatarUrl?.startsWith("data:")) {
+        try {
+          const response = await fetch(avatarUrl);
+          const blob = await response.blob();
+          const extension = blob.type.split("/")[1] || "png";
+          fileToUpload = new File([blob], `avatar-${Date.now()}.${extension}`, {
+            type: blob.type || "image/png",
+          });
+        } catch (error) {
+          console.error("Failed to convert existing avatar", error);
+        }
+      }
+
+      if (fileToUpload) {
+        const { uploadUrl, fileUrl } = (await apiClient.post("/uploads", {
+          fileName: fileToUpload.name,
+          fileType: fileToUpload.type,
+        })) as { uploadUrl: string; fileUrl: string };
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": fileToUpload.type,
+          },
+          body: fileToUpload,
+        });
+
+        if (uploadResponse.ok) {
+          avatarUrl = fileUrl;
+        } else {
+          throw new Error("Avatar upload failed.");
+        }
+      } else if (avatarUrl?.startsWith("blob:")) {
+        avatarUrl = undefined;
+      } else if (!avatarUrl) {
+        avatarUrl =
+          "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
+      }
+
+      const payload = {
+        name: trimmedName,
+        tagline: editedProfile.tagline?.trim() ?? "",
+        avatar: avatarUrl,
+        focuses: editedProfile.focuses,
+        projects: projectsArray,
+        socials: socialsPayload,
+      };
+
       const { user } = (await apiClient.patch("/user/profile", payload)) as {
         user: ApiUser;
       };
@@ -226,8 +301,14 @@ const Profile: React.FC<ProfileProps> = ({
       setEditedProfile(normalizedProfile);
       setIsEditing(false);
       toast.success("Profile updated.");
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+      setAvatarFile(null);
     } catch (error) {
       console.error("Failed to update profile", error);
+      toast.error("Unable to update profile. Please try again later.");
     } finally {
       setIsSaving(false);
     }
@@ -236,6 +317,11 @@ const Profile: React.FC<ProfileProps> = ({
   const handleCancel = () => {
     setIsEditing(false);
     setEditedProfile(userProfile);
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = null;
+    }
+    setAvatarFile(null);
   };
 
   const socials = userProfile.socials;

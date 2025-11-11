@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.10.0",
+    "@aws-sdk/client-s3": "^3.928.0",
+    "@aws-sdk/s3-request-presigner": "^3.928.0",
     "@headlessui/react": "^2.2.7",
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
+
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
-import User from "@/models/User";
+import { deleteS3ObjectByUrl } from "@/libs/s3-utils";
 import Post from "@/models/Post";
+import User from "@/models/User";
 
 export async function DELETE(request: Request, context: any) {
   try {
@@ -55,7 +57,11 @@ export async function DELETE(request: Request, context: any) {
       );
     }
 
+    const imageUrl = post.image;
+
     await post.deleteOne();
+
+    await deleteS3ObjectByUrl(imageUrl);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

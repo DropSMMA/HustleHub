@@ -42,11 +42,24 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   const [kudosCount, setKudosCount] = useState(activity.kudos);
   const replySectionRef = useRef<HTMLDivElement | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  const DESCRIPTION_CHAR_LIMIT = 320;
+  const shouldTruncateDescription =
+    activity.description.length > DESCRIPTION_CHAR_LIMIT;
+  const displayedDescription =
+    isDescriptionExpanded || !shouldTruncateDescription
+      ? activity.description
+      : `${activity.description.slice(0, DESCRIPTION_CHAR_LIMIT).trimEnd()}…`;
 
   useEffect(() => {
     setIsLiked(Boolean(activity.likedByCurrentUser));
     setKudosCount(activity.kudos);
   }, [activity.id, activity.kudos, activity.likedByCurrentUser]);
+
+  useEffect(() => {
+    setIsDescriptionExpanded(false);
+  }, [activity.id]);
 
   const replyCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -203,8 +216,17 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             </p>
           )}
           <p className="text-brand-text-primary text-lg leading-relaxed whitespace-pre-wrap">
-            {activity.description}
+            {displayedDescription}
           </p>
+          {shouldTruncateDescription && (
+            <button
+              type="button"
+              onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+              className="mt-2 text-xs font-semibold text-brand-neon hover:underline"
+            >
+              {isDescriptionExpanded ? "See less" : "See more"}
+            </button>
+          )}
           <div className="flex flex-wrap gap-2 mt-3">
             {activity.type && (
               <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">

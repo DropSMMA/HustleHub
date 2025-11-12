@@ -161,12 +161,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
       const enrichedActivity = replyingToActivity
         ? {
             ...activity,
-            replyingTo:
-              activity.replyingTo ?? {
-                activityId: replyingToActivity.id,
-                username: replyingToActivity.username,
-                name: replyingToActivity.user,
-              },
+            replyingTo: activity.replyingTo ?? {
+              activityId: replyingToActivity.id,
+              username: replyingToActivity.username,
+              name: replyingToActivity.user,
+            },
           }
         : activity;
 
@@ -209,7 +208,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
             </h2>
             <button
               onClick={handleSubmit}
-              disabled={!description.trim() || (!type && !isReplyMode) || isSubmitting}
+              disabled={
+                !description.trim() || (!type && !isReplyMode) || isSubmitting
+              }
               className="bg-brand-neon text-brand-primary font-bold py-2 px-5 rounded-lg transition-all duration-200 disabled:bg-brand-tertiary disabled:text-gray-500 disabled:cursor-not-allowed hover:bg-green-400"
             >
               {isSubmitting ? (
@@ -222,7 +223,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
           {isReplyMode && replyingToActivity && (
             <div className="mb-3 text-xs text-brand-text-secondary">
-              Replying to <span className="text-brand-neon">@{replyingToActivity.username}</span>
+              Replying to{" "}
+              <span className="text-brand-neon">
+                @{replyingToActivity.username}
+              </span>
             </div>
           )}
 
@@ -238,7 +242,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={
                   isReplyMode
-                    ? `Replying to ${replyingToActivity?.user ?? "this post"}...`
+                    ? `Replying to ${
+                        replyingToActivity?.user ?? "this post"
+                      }...`
                     : `What's your hustle, ${userProfile.name}?`
                 }
                 className="w-full bg-transparent text-lg text-white placeholder-gray-500 focus:outline-none resize-none"
@@ -290,7 +296,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     : "text-gray-400 hover:bg-brand-tertiary"
                 }`}
                 aria-label={
-                  isReplyMode ? "Choose an optional category" : "Choose a category"
+                  isReplyMode
+                    ? "Choose an optional category"
+                    : "Choose a category"
                 }
               >
                 <TagIcon />
@@ -321,7 +329,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   onChange={(e) => setStats(e.target.value)}
                   placeholder="Stats (e.g., 5km)"
                   className="bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none w-32"
-                  disabled={isReplyMode}
                 />
               </div>
             </div>
@@ -330,18 +337,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
           {showTypeSelector && (
             <div className="mt-4 border-t border-brand-tertiary/50 pt-4 space-y-3 animate-fade-in">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {activityTypes.map((activityType) => (
-                <button
-                  key={activityType}
-                  type="button"
-                  onClick={() => handleSelectType(activityType)}
+                {activityTypes.map((activityType) => (
+                  <button
+                    key={activityType}
+                    type="button"
+                    onClick={() => handleSelectType(activityType)}
                     className={`p-3 rounded-lg font-semibold text-center transition-all duration-200 bg-brand-tertiary hover:bg-opacity-80 text-white ${
                       type === activityType ? "ring-2 ring-brand-neon" : ""
                     }`}
-                >
-                  {activityType}
-                </button>
-              ))}
+                  >
+                    {activityType}
+                  </button>
+                ))}
               </div>
             </div>
           )}

@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
-import Post, { type IPost, type IComment } from "@/models/Post";
+import Post, { type IPost } from "@/models/Post";
 import { ActivityType } from "@/app/types";
 
 type SerializedPost = Record<string, any>;
@@ -20,15 +20,15 @@ const replyingToInputSchema = z.object({
 const createPostSchema = z
   .object({
     type: z.nativeEnum(ActivityType).optional(),
-  description: z.string().trim().min(1).max(1000),
-  stats: z.string().trim().max(120).optional(),
-  image: z
-    .string()
-    .trim()
-    .refine((value) => !value || isValidImage(value), {
-      message: "Image must be a valid http(s) URL.",
-    })
-    .optional(),
+    description: z.string().trim().min(1).max(1000),
+    stats: z.string().trim().max(120).optional(),
+    image: z
+      .string()
+      .trim()
+      .refine((value) => !value || isValidImage(value), {
+        message: "Image must be a valid http(s) URL.",
+      })
+      .optional(),
     replyingTo: replyingToInputSchema.optional(),
   })
   .superRefine((data, ctx) => {
@@ -84,9 +84,7 @@ const serializePosts = async (
     return [] as SerializedPost[];
   }
 
-  const serializedPosts = posts.map(
-    (post) => post.toJSON() as SerializedPost
-  );
+  const serializedPosts = posts.map((post) => post.toJSON() as SerializedPost);
 
   const likedByLists = posts.map((post) =>
     Array.isArray(post.likedBy)
@@ -326,8 +324,7 @@ export async function POST(request: Request) {
       };
     }
 
-    const resolvedType =
-      payload.type ?? undefined;
+    const resolvedType = payload.type ?? undefined;
 
     if (!resolvedType && !replyingToSnapshot) {
       return NextResponse.json(
@@ -335,26 +332,12 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const postData: Partial<IPost> & {
-      userId: mongoose.Types.ObjectId;
-      username: string;
-      name: string;
-      avatar: string;
-      description: string;
-      stats?: string;
-      image?: string;
-      kudos: number;
-      likedBy: mongoose.Types.ObjectId[];
-      comments: IComment[];
-      replyingTo: typeof replyingToSnapshot;
-    } = {
+    const post = await Post.create({
       userId: user._id,
       username: user.username,
       name: user.name ?? session.user.name ?? "HustleHub Creator",
-      avatar:
-        user.image ??
-        session.user.image ??
-        DEFAULT_AVATAR,
+      avatar: user.image ?? session.user.image ?? DEFAULT_AVATAR,
+      ...(resolvedType ? { type: resolvedType } : {}),
       description: payload.description,
       stats: payload.stats,
       image: payload.image,
@@ -362,13 +345,7 @@ export async function POST(request: Request) {
       likedBy: [],
       comments: [],
       replyingTo: replyingToSnapshot,
-    };
-
-    if (resolvedType) {
-      postData.type = resolvedType;
-    }
-
-    const post = await Post.create(postData);
+    });
 
     const ownerOverride = new Map<string, OwnerInfo>();
     const userIdString = toStringId(user._id) ?? user._id.toString();
@@ -376,8 +353,7 @@ export async function POST(request: Request) {
     ownerOverride.set(userIdString, {
       name: user.name ?? session.user.name ?? "",
       username: user.username ?? "",
-      avatar:
-        user.image ?? session.user.image ?? DEFAULT_AVATAR,
+      avatar: user.image ?? session.user.image ?? DEFAULT_AVATAR,
     });
 
     const [normalizedPost] = await serializePosts([post], {

@@ -48,6 +48,14 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  const DESCRIPTION_CHAR_LIMIT = 260;
+  const shouldTruncateDescription = description.length > DESCRIPTION_CHAR_LIMIT;
+  const displayedDescription =
+    isDescriptionExpanded || !shouldTruncateDescription
+      ? description
+      : `${description.slice(0, DESCRIPTION_CHAR_LIMIT).trimEnd()}…`;
 
   const isOwner = currentUser?.username === username;
 
@@ -191,8 +199,20 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
 
           <div>
             <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">
-              {description}
+              {displayedDescription}
             </p>
+            {shouldTruncateDescription && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsDescriptionExpanded((prev) => !prev);
+                }}
+                className="mt-2 text-xs font-semibold text-brand-neon hover:underline"
+              >
+                {isDescriptionExpanded ? "See less" : "See more"}
+              </button>
+            )}
             <div className="flex flex-wrap gap-2 mt-3">
               {type && (
               <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">

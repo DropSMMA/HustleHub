@@ -362,12 +362,12 @@ const DashboardController: React.FC = () => {
   });
 
   return (
-    <div className="bg-brand-primary min-h-screen font-sans text-white">
+    <div className="bg-brand-primary min-h-dvh font-sans text-white flex flex-col">
       <Header
         unreadNotifications={unreadNotificationsCount}
         setCurrentView={setCurrentView}
       />
-      <main className="pb-24 pt-16">{viewContent}</main>
+      <main className="flex-1 pb-28 pt-16">{viewContent}</main>
       {currentView === "feed" && (
         <button
           onClick={handleOpenNewPostModal}

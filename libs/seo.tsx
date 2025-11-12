@@ -57,6 +57,12 @@ export const getSEOTags = ({
       card: "summary_large_image",
       creator: "@marc_louvion",
     },
+    themeColor: config.colors.main,
+    appleWebApp: {
+      capable: true,
+      title: config.appName,
+      statusBarStyle: "black-translucent",
+    },
 
     // If a canonical URL is given, we add it. The metadataBase will turn the relative URL into a fully qualified URL
     ...(canonicalUrlRelative && {

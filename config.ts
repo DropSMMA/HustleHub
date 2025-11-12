@@ -3,7 +3,7 @@ import { ConfigProps } from "./types/config";
 // DaisyUI v5 no longer exports themes directly, using fallback color
 const themes = {
   light: {
-    primary: "#3b82f6", // blue-500
+    primary: "#1a1a1a",
   },
 };
 
@@ -12,7 +12,7 @@ const config = {
   appName: "HustleHub",
   // REQUIRED: a short description of your app for SEO tags (can be overwritten)
   appDescription:
-    "The NextJS boilerplate with all you need to build your SaaS, AI tool, or any other web app.",
+    "HustleHub is the social fitness and productivity app for founders—log workouts, deep work, and networking wins while staying accountable with a community that understands the grind.",
   // REQUIRED (no https://, not trailing slash at the end, just the naked domain)
   domainName: "Hustlehub.it",
   crisp: {
@@ -31,20 +31,20 @@ const config = {
             ? "price_1Niyy5AxyNprDp7iZIqEyD2h"
             : "price_456",
         //  REQUIRED - Name of the plan, displayed on the pricing page
-        name: "Starter",
+        name: "Solo Hustler",
         // A friendly description of the plan, displayed on the pricing page. Tip: explain why this plan and not others
-        description: "Perfect for small projects",
+        description: "Stay consistent with personal streaks and AI balance tips.",
         // The price you want to display, the one user will be charged on Stripe.
-        price: 99,
+        price: 12,
         // If you have an anchor price (i.e. $29) that you want to display crossed out, put it here. Otherwise, leave it empty
-        priceAnchor: 149,
+        priceAnchor: 19,
         features: [
           {
-            name: "NextJS boilerplate",
+            name: "Unlimited hustle session logging",
           },
-          { name: "User oauth" },
-          { name: "Database" },
-          { name: "Emails" },
+          { name: "Personal streaks & AI insights" },
+          { name: "Access to public challenges" },
+          { name: "Community feed & kudos" },
         ],
       },
       {
@@ -54,19 +54,18 @@ const config = {
             : "price_456",
         // This plan will look different on the pricing page, it will be highlighted. You can only have one plan with isFeatured: true
         isFeatured: true,
-        name: "Advanced",
-        description: "You need more power",
-        price: 149,
-        priceAnchor: 299,
+        name: "Accountability Squad",
+        description: "Power up with private pods, advanced insights, and team goals.",
+        price: 29,
+        priceAnchor: 49,
         features: [
           {
-            name: "NextJS boilerplate",
+            name: "Everything in Solo Hustler",
           },
-          { name: "User oauth" },
-          { name: "Database" },
-          { name: "Emails" },
-          { name: "1 year of updates" },
-          { name: "24/7 support" },
+          { name: "Private accountability squads" },
+          { name: "Custom challenge creation" },
+          { name: "Advanced team analytics" },
+          { name: "Virtual co-working & matchups" },
         ],
       },
     ],

@@ -8,7 +8,7 @@ import logo from "@/app/icon.png";
 
 const Footer = () => {
   return (
-    <footer className="bg-base-200 border-t border-base-content/10">
+    <footer className="bg-brand-primary border-t border-brand-tertiary/60 text-white">
       <div className="max-w-7xl mx-auto px-8 py-24">
         <div className=" flex lg:items-start md:flex-row md:flex-nowrap flex-wrap flex-col">
           <div className="w-64 flex-shrink-0 md:mx-0 mx-auto text-center md:text-left">
@@ -25,15 +25,15 @@ const Footer = () => {
                 width={24}
                 height={24}
               />
-              <strong className="font-extrabold tracking-tight text-base md:text-lg">
+              <strong className="font-extrabold tracking-tight text-base md:text-lg text-brand-neon">
                 {config.appName}
               </strong>
             </Link>
 
-            <p className="mt-3 text-sm text-base-content/80">
+            <p className="mt-3 text-sm text-white/70">
               {config.appDescription}
             </p>
-            <p className="mt-3 text-sm text-base-content/60">
+            <p className="mt-3 text-sm text-white/50">
               Copyright © {new Date().getFullYear()} - All rights reserved
             </p>
 
@@ -41,11 +41,11 @@ const Footer = () => {
               href="https://shipfa.st/?ref=shipfast_badge"
               title="Go to ShipFast"
               target="_blank"
-              className="mt-4 inline-block cursor-pointer rounded bg-neutral px-2 py-1 text-sm text-neutral-content ring-1 ring-base-content/10 duration-200 hover:ring-neutral"
+              className="mt-4 inline-block cursor-pointer rounded bg-brand-tertiary px-2 py-1 text-sm text-white ring-1 ring-brand-tertiary/60 duration-200 hover:ring-brand-neon/60"
             >
               <div className="flex items-center gap-1">
                 <span className="opacity-90">Built with</span>
-                <span className="flex items-center gap-0.5 font-semibold tracking-tight">
+                <span className="flex items-center gap-0.5 font-semibold tracking-tight text-brand-neon">
                   <svg
                     className="size-5"
                     viewBox="0 0 375 509"
@@ -66,7 +66,7 @@ const Footer = () => {
           </div>
           <div className="flex-grow flex flex-wrap justify-center -mb-10 md:mt-0 mt-10 text-center">
             <div className="lg:w-1/3 md:w-1/2 w-full px-4">
-              <div className="footer-title font-semibold text-base-content tracking-widest text-sm md:text-left mb-3">
+              <div className="footer-title font-semibold tracking-widest text-sm md:text-left mb-3 text-white/60">
                 LINKS
               </div>
 
@@ -75,34 +75,50 @@ const Footer = () => {
                   <a
                     href={`mailto:${config.resend.supportEmail}`}
                     target="_blank"
-                    className="link link-hover"
+                    className="text-white/70 hover:text-brand-neon transition-colors"
                     aria-label="Contact Support"
                   >
                     Support
                   </a>
                 )}
-                <Link href="/#pricing" className="link link-hover">
-                  Pricing
+                <Link
+                  href="/#features"
+                  className="text-white/70 hover:text-brand-neon transition-colors"
+                >
+                  Features
                 </Link>
-                <Link href="/blog" className="link link-hover">
+                <Link
+                  href="/blog"
+                  className="text-white/70 hover:text-brand-neon transition-colors"
+                >
                   Blog
                 </Link>
-                <a href="/#" target="_blank" className="link link-hover">
-                  Affiliates
+                <a
+                  href="/#community"
+                  target="_blank"
+                  className="text-white/70 hover:text-brand-neon transition-colors"
+                >
+                  Community guidelines
                 </a>
               </div>
             </div>
 
             <div className="lg:w-1/3 md:w-1/2 w-full px-4">
-              <div className="footer-title font-semibold text-base-content tracking-widest text-sm md:text-left mb-3">
+              <div className="footer-title font-semibold tracking-widest text-sm md:text-left mb-3 text-white/60">
                 LEGAL
               </div>
 
               <div className="flex flex-col justify-center items-center md:items-start gap-2 mb-10 text-sm">
-                <Link href="/tos" className="link link-hover">
+                <Link
+                  href="/tos"
+                  className="text-white/70 hover:text-brand-neon transition-colors"
+                >
                   Terms of services
                 </Link>
-                <Link href="/privacy-policy" className="link link-hover">
+                <Link
+                  href="/privacy-policy"
+                  className="text-white/70 hover:text-brand-neon transition-colors"
+                >
                   Privacy policy
                 </Link>
               </div>

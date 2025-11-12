@@ -41,14 +41,14 @@ const ButtonCheckout = ({
 
   return (
     <button
-      className="btn btn-primary btn-block group"
+      className="btn btn-block border-0 bg-brand-neon text-brand-primary font-semibold hover:bg-brand-neon/90 group"
       onClick={() => handlePayment()}
     >
       {isLoading ? (
         <span className="loading loading-spinner loading-xs"></span>
       ) : (
         <svg
-          className="w-5 h-5 fill-primary-content group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-200"
+          className="w-5 h-5 fill-brand-primary group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-200"
           viewBox="0 0 375 509"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"

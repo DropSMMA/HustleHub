@@ -14,20 +14,25 @@ const links: {
   label: string;
 }[] = [
   {
-    href: "/#pricing",
-    label: "Pricing",
-  },
-  {
-    href: "/#testimonials",
-    label: "Reviews",
+    href: "/#features",
+    label: "Features",
   },
   {
     href: "/#faq",
-    label: "FAQ",
+    label: "FAQs",
+  },
+  {
+    href: "/#cta",
+    label: "Join",
   },
 ];
 
-const cta: JSX.Element = <ButtonSignin extraStyle="btn-primary" />;
+const cta: JSX.Element = (
+  <ButtonSignin
+    text="Join HustleHub"
+    extraStyle="bg-brand-neon text-brand-primary border-0 hover:bg-brand-neon/90"
+  />
+);
 
 // A header with a logo on the left, links in the center (like Pricing, etc...), and a CTA (like Get Started or Login) on the right.
 // The header is responsive, and on mobile, the links are hidden behind a burger button.
@@ -41,7 +46,7 @@ const Header = () => {
   }, [searchParams]);
 
   return (
-    <header className="bg-base-200">
+    <header className="bg-brand-primary text-white border-b border-brand-tertiary/40">
       <nav
         className="container flex items-center justify-between px-8 py-4 mx-auto"
         aria-label="Global"
@@ -62,14 +67,16 @@ const Header = () => {
               width={32}
               height={32}
             />
-            <span className="font-extrabold text-lg">{config.appName}</span>
+            <span className="font-extrabold text-lg text-brand-neon">
+              {config.appName}
+            </span>
           </Link>
         </div>
         {/* Burger button to open menu on mobile */}
         <div className="flex lg:hidden">
           <button
             type="button"
-            className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
+            className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-white hover:text-brand-neon transition-colors"
             onClick={() => setIsOpen(true)}
           >
             <span className="sr-only">Open main menu</span>
@@ -79,7 +86,7 @@ const Header = () => {
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
-              className="w-6 h-6 text-base-content"
+              className="w-6 h-6"
             >
               <path
                 strokeLinecap="round"
@@ -96,7 +103,7 @@ const Header = () => {
             <Link
               href={link.href}
               key={link.href}
-              className="link link-hover"
+              className="text-white/70 hover:text-brand-neon transition-colors font-medium"
               title={link.label}
             >
               {link.label}
@@ -111,7 +118,7 @@ const Header = () => {
       {/* Mobile menu, show/hide based on menu state. */}
       <div className={`relative z-50 ${isOpen ? "" : "hidden"}`}>
         <div
-          className={`fixed inset-y-0 right-0 z-10 w-full px-8 py-4 overflow-y-auto bg-base-200 sm:max-w-sm sm:ring-1 sm:ring-neutral/10 transform origin-right transition ease-in-out duration-300`}
+          className={`fixed inset-y-0 right-0 z-10 w-full px-8 py-4 overflow-y-auto bg-brand-secondary sm:max-w-sm sm:ring-1 sm:ring-brand-tertiary/50 transform origin-right transition ease-in-out duration-300 text-white`}
         >
           {/* Your logo/name on small screens */}
           <div className="flex items-center justify-between">
@@ -129,11 +136,13 @@ const Header = () => {
                 width={32}
                 height={32}
               />
-              <span className="font-extrabold text-lg">{config.appName}</span>
+              <span className="font-extrabold text-lg text-brand-neon">
+                {config.appName}
+              </span>
             </Link>
             <button
               type="button"
-              className="-m-2.5 rounded-md p-2.5"
+              className="-m-2.5 rounded-md p-2.5 text-white hover:text-brand-neon transition-colors"
               onClick={() => setIsOpen(false)}
             >
               <span className="sr-only">Close menu</span>
@@ -162,7 +171,7 @@ const Header = () => {
                   <Link
                     href={link.href}
                     key={link.href}
-                    className="link link-hover"
+                    className="text-white/80 hover:text-brand-neon transition-colors font-medium"
                     title={link.label}
                   >
                     {link.label}
@@ -170,7 +179,9 @@ const Header = () => {
                 ))}
               </div>
             </div>
-            <div className="divider"></div>
+            <div className="divider before:bg-brand-tertiary after:bg-brand-tertiary text-brand-tertiary/60">
+              Menu
+            </div>
             {/* Your CTA on small screens */}
             <div className="flex flex-col">{cta}</div>
           </div>

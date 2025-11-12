@@ -14,11 +14,10 @@ export default function Home() {
       <Suspense>
         <Header />
       </Suspense>
-      <main>
+      <main className="bg-brand-primary text-white">
         <Hero />
         <Problem />
         <FeaturesAccordion />
-        <Pricing />
         <FAQ />
         <CTA />
       </main>

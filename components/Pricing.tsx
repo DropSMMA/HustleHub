@@ -7,13 +7,18 @@ import ButtonCheckout from "./ButtonCheckout";
 
 const Pricing = () => {
   return (
-    <section className="bg-base-200 overflow-hidden" id="pricing">
+    <section className="bg-brand-secondary text-white overflow-hidden" id="pricing">
       <div className="py-24 px-8 max-w-5xl mx-auto">
         <div className="flex flex-col text-center w-full mb-20">
-          <p className="font-medium text-primary mb-8">Pricing</p>
-          <h2 className="font-bold text-3xl lg:text-5xl tracking-tight">
-            Save hours of repetitive code and ship faster!
+          <p className="font-medium text-brand-neon uppercase tracking-widest mb-6">
+            Membership
+          </p>
+          <h2 className="font-bold text-3xl lg:text-5xl tracking-tight text-white">
+            Choose how you keep your hustle accountable.
           </h2>
+          <p className="text-white/70 text-lg mt-6 max-w-2xl mx-auto">
+            Whether you&apos;re grinding solo or rallying a distributed squad, every plan includes logging, social kudos, and AI-powered balance reminders.
+          </p>
         </div>
 
         <div className="relative flex justify-center flex-col lg:flex-row items-center lg:items-stretch gap-8">
@@ -22,25 +27,27 @@ const Pricing = () => {
               {plan.isFeatured && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                   <span
-                    className={`badge text-xs text-primary-content font-semibold border-0 bg-primary`}
+                    className="badge text-xs font-semibold border-0 bg-brand-neon text-brand-primary"
                   >
-                    POPULAR
+                    TEAM FAVORITE
                   </span>
                 </div>
               )}
 
               {plan.isFeatured && (
                 <div
-                  className={`absolute -inset-[1px] rounded-[9px] bg-primary z-10`}
+                  className="absolute -inset-[1px] rounded-[9px] bg-brand-neon/50 blur-md z-0"
                 ></div>
               )}
 
-              <div className="relative flex flex-col h-full gap-5 lg:gap-8 z-10 bg-base-100 p-8 rounded-lg">
+              <div className="relative flex flex-col h-full gap-5 lg:gap-8 z-10 bg-brand-primary border border-brand-tertiary/40 p-8 rounded-lg shadow-[0_25px_60px_-25px_rgba(0,0,0,0.8)]">
                 <div className="flex justify-between items-center gap-4">
                   <div>
-                    <p className="text-lg lg:text-xl font-bold">{plan.name}</p>
+                    <p className="text-lg lg:text-xl font-bold text-white">
+                      {plan.name}
+                    </p>
                     {plan.description && (
-                      <p className="text-base-content/80 mt-2">
+                      <p className="text-white/70 mt-2">
                         {plan.description}
                       </p>
                     )}
@@ -50,8 +57,8 @@ const Pricing = () => {
                   {plan.priceAnchor && (
                     <div className="flex flex-col justify-end mb-[4px] text-lg ">
                       <p className="relative">
-                        <span className="absolute bg-base-content h-[1.5px] inset-x-0 top-[53%]"></span>
-                        <span className="text-base-content/80">
+                        <span className="absolute bg-white/40 h-[1.5px] inset-x-0 top-[53%]"></span>
+                        <span className="text-white/50">
                           ${plan.priceAnchor}
                         </span>
                       </p>
@@ -61,20 +68,20 @@ const Pricing = () => {
                     ${plan.price}
                   </p>
                   <div className="flex flex-col justify-end mb-[4px]">
-                    <p className="text-xs text-base-content/60 uppercase font-semibold">
+                    <p className="text-xs text-white/60 uppercase font-semibold">
                       USD
                     </p>
                   </div>
                 </div>
                 {plan.features && (
-                  <ul className="space-y-2.5 leading-relaxed text-base flex-1">
+                  <ul className="space-y-2.5 leading-relaxed text-base flex-1 text-white/80">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
                           fill="currentColor"
-                          className="w-[18px] h-[18px] opacity-80 shrink-0"
+                          className="w-[18px] h-[18px] text-brand-neon shrink-0"
                         >
                           <path
                             fillRule="evenodd"
@@ -91,8 +98,8 @@ const Pricing = () => {
                 <div className="space-y-2">
                   <ButtonCheckout priceId={plan.priceId} />
 
-                  <p className="flex items-center justify-center gap-2 text-sm text-center text-base-content/80 font-medium relative">
-                    Pay once. Access forever.
+                  <p className="flex items-center justify-center gap-2 text-sm text-center text-white/70 font-medium relative">
+                    Cancel anytime. Your streaks stay with you.
                   </p>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
-import Post, { type IPost } from "@/models/Post";
+import Post, { type IPost, type IComment } from "@/models/Post";
 import { ActivityType } from "@/app/types";
 
 type SerializedPost = Record<string, any>;
@@ -327,17 +327,27 @@ export async function POST(request: Request) {
     }
 
     const resolvedType =
-      payload.type ??
-      (parentPost ? (parentPost.type as ActivityType) : undefined);
+      payload.type ?? undefined;
 
-    if (!resolvedType) {
+    if (!resolvedType && !replyingToSnapshot) {
       return NextResponse.json(
         { message: "Activity type is required for new posts." },
         { status: 400 }
       );
     }
-
-    const post = await Post.create({
+    const postData: Partial<IPost> & {
+      userId: mongoose.Types.ObjectId;
+      username: string;
+      name: string;
+      avatar: string;
+      description: string;
+      stats?: string;
+      image?: string;
+      kudos: number;
+      likedBy: mongoose.Types.ObjectId[];
+      comments: IComment[];
+      replyingTo: typeof replyingToSnapshot;
+    } = {
       userId: user._id,
       username: user.username,
       name: user.name ?? session.user.name ?? "HustleHub Creator",
@@ -345,7 +355,6 @@ export async function POST(request: Request) {
         user.image ??
         session.user.image ??
         DEFAULT_AVATAR,
-      type: resolvedType,
       description: payload.description,
       stats: payload.stats,
       image: payload.image,
@@ -353,7 +362,13 @@ export async function POST(request: Request) {
       likedBy: [],
       comments: [],
       replyingTo: replyingToSnapshot,
-    });
+    };
+
+    if (resolvedType) {
+      postData.type = resolvedType;
+    }
+
+    const post = await Post.create(postData);
 
     const ownerOverride = new Map<string, OwnerInfo>();
     const userIdString = toStringId(user._id) ?? user._id.toString();

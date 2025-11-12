@@ -26,7 +26,7 @@ export interface IPost extends Document {
   username: string;
   name: string;
   avatar: string;
-  type: ActivityType;
+  type?: ActivityType;
   description: string;
   stats?: string;
   image?: string;
@@ -81,7 +81,9 @@ const postSchema = new Schema<IPost>(
     type: {
       type: String,
       enum: Object.values(ActivityType),
-      required: true,
+      required: function (this: IPost) {
+        return !this.replyingTo;
+      },
     },
     description: { type: String, required: true, trim: true },
     stats: { type: String, trim: true },

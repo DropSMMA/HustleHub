@@ -7,6 +7,7 @@ import { CommentIcon } from "./icons/CommentIcon";
 import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
 import ActivityCard from "./ActivityCard";
+import ImageModal from "./icons/imagemodal";
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -40,6 +41,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   const [isLiked, setIsLiked] = useState(Boolean(activity.likedByCurrentUser));
   const [kudosCount, setKudosCount] = useState(activity.kudos);
   const replySectionRef = useRef<HTMLDivElement | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     setIsLiked(Boolean(activity.likedByCurrentUser));
@@ -134,9 +136,16 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   };
 
   const handleOpenImage = () => {
-    if (activity.image && onOpenImage) {
-      onOpenImage(activity.image);
+    if (activity.image) {
+      setIsImageModalOpen(true);
+      if (onOpenImage) {
+        onOpenImage(activity.image);
+      }
     }
+  };
+
+  const handleCloseImage = () => {
+    setIsImageModalOpen(false);
   };
 
   return (
@@ -305,6 +314,13 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
         message="Are you sure you want to permanently delete this post? This action cannot be undone."
         confirmText="Delete"
       />
+      {activity.image && (
+        <ImageModal
+          isOpen={isImageModalOpen}
+          onClose={handleCloseImage}
+          imageUrl={activity.image}
+        />
+      )}
     </div>
   );
 };

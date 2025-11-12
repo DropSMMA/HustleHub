@@ -15,7 +15,7 @@ interface FeedProps {
     onRefresh?: () => Promise<void>;
     onLoadMore?: () => void;
     isLoadingMore?: boolean;
-    onViewActivityDetail?: (activityId: string) => void;
+    onViewActivityDetail?: (activityId: string, options?: { commentId?: string }) => void;
 }
 
 const Feed: React.FC<FeedProps> = ({ 
@@ -77,6 +77,20 @@ const Feed: React.FC<FeedProps> = ({
         });
         return counts;
     }, [activities]);
+
+    const handleNavigateToActivity = (activity: Activity) => {
+        if (!onViewActivityDetail) {
+            return;
+        }
+
+        if (activity.replyingTo?.activityId) {
+            onViewActivityDetail(activity.replyingTo.activityId, {
+                commentId: activity.id,
+            });
+        } else {
+            onViewActivityDetail(activity.id);
+        }
+    };
 
     const handleTouchStart = (e: React.TouchEvent) => {
         if (!onRefresh || isRefreshing) return;
@@ -148,7 +162,7 @@ const Feed: React.FC<FeedProps> = ({
                         currentUser={currentUser}
                         onClick={
                             onViewActivityDetail
-                                ? () => onViewActivityDetail(activity.id)
+                                ? () => handleNavigateToActivity(activity)
                                 : undefined
                         }
                         isHighlighted={activity.id === highlightedPostId}

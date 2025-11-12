@@ -5,6 +5,7 @@ import { ThumbsUpFilledIcon } from "./icons/ThumbsUpFilledIcon";
 import { CommentIcon } from "./icons/CommentIcon";
 import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
+import ImageModal from "./icons/imagemodal";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -46,6 +47,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const isOwner = currentUser?.username === username;
 
@@ -112,13 +114,22 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     }
   };
 
+  const handleOpenImageModal = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setIsImageModalOpen(true);
+  };
+
+  const handleCloseImageModal = () => {
+    setIsImageModalOpen(false);
+  };
+
   return (
     <>
       <div
         id={`post-${id}`}
-        className={`bg-brand-secondary rounded-2xl shadow-lg overflow-hidden transition-all duration-500 ${
+        className={`bg-brand-secondary border border-brand-border rounded-2xl shadow-lg overflow-hidden transition-all duration-500 ${
           isHighlighted
-            ? "ring-4 ring-brand-neon ring-offset-4 ring-offset-brand-primary"
+            ? "ring-4 ring-brand-neon ring-offset-4 ring-offset-brand-primary shadow-neon"
             : ""
         } ${
           onClick
@@ -198,11 +209,18 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
         </div>
 
         {image && (
-          <img
-            className="w-full h-64 object-cover"
-            src={image}
-            alt="Activity"
-          />
+          <button
+            type="button"
+            onClick={handleOpenImageModal}
+            className="w-full"
+            aria-label="View image"
+          >
+            <img
+              className="w-full h-64 object-cover"
+              src={image}
+              alt="Activity"
+            />
+          </button>
         )}
 
         <div className="p-4 flex justify-between items-center bg-brand-secondary/60 backdrop-blur-sm border-t border-brand-tertiary/50">
@@ -241,6 +259,13 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
         message="Are you sure you want to permanently delete this post? This action cannot be undone."
         confirmText="Delete"
       />
+      {image && (
+        <ImageModal
+          isOpen={isImageModalOpen}
+          onClose={handleCloseImageModal}
+          imageUrl={image}
+        />
+      )}
     </>
   );
 };

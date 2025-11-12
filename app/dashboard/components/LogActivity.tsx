@@ -43,7 +43,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const isReplyMode = Boolean(replyingToActivity);
 
   const resetState = () => {
-    setType(replyingToActivity?.type ?? null);
+    setType(null);
     setDescription("");
     setStats("");
     if (imagePreview) {
@@ -62,7 +62,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    setType(replyingToActivity?.type ?? null);
+    setType(null);
   }, [replyingToActivity]);
 
   useEffect(() => {
@@ -94,7 +94,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   };
 
   const handleSelectType = (selectedType: ActivityType) => {
-    setType(selectedType);
+    setType((current) => (current === selectedType ? null : selectedType));
     setShowTypeSelector(false);
   };
 
@@ -282,18 +282,19 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
           <div className="mt-4 pt-3 border-t border-brand-tertiary/50 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {!isReplyMode && (
-                <button
-                  onClick={() => setShowTypeSelector(!showTypeSelector)}
-                  className={`p-2 rounded-full transition-colors ${
-                    showTypeSelector || type
-                      ? "text-brand-neon bg-brand-neon/10"
-                      : "text-gray-400 hover:bg-brand-tertiary"
-                  }`}
-                >
-                  <TagIcon />
-                </button>
-              )}
+              <button
+                onClick={() => setShowTypeSelector(!showTypeSelector)}
+                className={`p-2 rounded-full transition-colors ${
+                  showTypeSelector || type
+                    ? "text-brand-neon bg-brand-neon/10"
+                    : "text-gray-400 hover:bg-brand-tertiary"
+                }`}
+                aria-label={
+                  isReplyMode ? "Choose an optional category" : "Choose a category"
+                }
+              >
+                <TagIcon />
+              </button>
               <button
                 onClick={() => imageInputRef.current?.click()}
                 className={`p-2 rounded-full transition-colors ${
@@ -326,18 +327,22 @@ const LogActivity: React.FC<LogActivityProps> = ({
             </div>
           </div>
 
-          {!isReplyMode && showTypeSelector && (
-            <div className="mt-4 border-t border-brand-tertiary/50 pt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in">
-              {activityTypes.map((activityType) => (
-                <button
-                  key={activityType}
-                  type="button"
-                  onClick={() => handleSelectType(activityType)}
-                  className="p-3 rounded-lg font-semibold text-center transition-all duration-200 bg-brand-tertiary hover:bg-opacity-80 text-white"
-                >
-                  {activityType}
-                </button>
-              ))}
+          {showTypeSelector && (
+            <div className="mt-4 border-t border-brand-tertiary/50 pt-4 space-y-3 animate-fade-in">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {activityTypes.map((activityType) => (
+                  <button
+                    key={activityType}
+                    type="button"
+                    onClick={() => handleSelectType(activityType)}
+                    className={`p-3 rounded-lg font-semibold text-center transition-all duration-200 bg-brand-tertiary hover:bg-opacity-80 text-white ${
+                      type === activityType ? "ring-2 ring-brand-neon" : ""
+                    }`}
+                  >
+                    {activityType}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

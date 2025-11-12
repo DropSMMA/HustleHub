@@ -136,10 +136,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
       <div
         id={`post-${id}`}
         className={`bg-brand-secondary border border-brand-border rounded-2xl shadow-lg overflow-hidden transition-all duration-500 ${
-          isHighlighted
-            ? "ring-4 ring-brand-neon ring-offset-4 ring-offset-brand-primary shadow-neon"
-            : ""
-        } ${
           onClick
             ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-neon"
             : ""

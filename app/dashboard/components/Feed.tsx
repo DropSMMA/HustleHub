@@ -78,6 +78,15 @@ const Feed: React.FC<FeedProps> = ({
         return counts;
     }, [activities]);
 
+    const visibleActivities = useMemo(
+        () =>
+            activities.filter(
+                (activity) =>
+                    !activity.replyingTo || (activity.replyingTo && activity.type)
+            ),
+        [activities]
+    );
+
     const handleNavigateToActivity = (activity: Activity) => {
         if (!onViewActivityDetail) {
             return;
@@ -150,8 +159,8 @@ const Feed: React.FC<FeedProps> = ({
                 </div>
             )}
             
-            {activities.length > 0 ? (
-                activities.map(activity => (
+            {visibleActivities.length > 0 ? (
+                visibleActivities.map(activity => (
                     <ActivityCard
                         key={activity.id}
                         activity={activity}

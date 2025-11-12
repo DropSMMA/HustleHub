@@ -87,13 +87,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     const element = document.getElementById(`post-${highlightedReplyId}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      element.classList.add("ring-2", "ring-brand-neon");
-      const timeout = window.setTimeout(() => {
-        element.classList.remove("ring-2", "ring-brand-neon");
-      }, 2000);
-      return () => window.clearTimeout(timeout);
     }
-    return undefined;
   }, [highlightedReplyId, replies]);
 
   const isOwner = currentUser?.username === activity.username;
@@ -152,7 +146,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     if (activity.image) {
       setIsImageModalOpen(true);
       if (onOpenImage) {
-        onOpenImage(activity.image);
+      onOpenImage(activity.image);
       }
     }
   };
@@ -314,11 +308,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
                 onViewProfile={onViewProfile}
                 onToggleLike={onToggleLike}
                 onDelete={onDeleteActivity}
-                currentUser={currentUser}
+                    currentUser={currentUser}
                 onClick={() => onViewActivityDetail(reply.id)}
                 replyCount={replyCounts.get(reply.id) ?? 0}
                 isHighlighted={reply.id === highlightedReplyId}
-              />
+                  />
             ))}
           </div>
         ) : (

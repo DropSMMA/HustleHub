@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, UserProfile } from '@/app/types';
 import ActivityCard from './ActivityCard';
 import { ArrowDownIcon } from './icons/ArrowDownIcon';
 
 interface FeedProps {
     activities: Activity[];
-    onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
+    onReply: (activity: Activity) => void;
     onToggleLike: (activityId: string) => Promise<void> | void;
     onViewProfile: (username: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
@@ -21,8 +20,7 @@ interface FeedProps {
 
 const Feed: React.FC<FeedProps> = ({ 
     activities, 
-    onAddComment, 
-    onAddReply, 
+    onReply, 
     onToggleLike,
     onViewProfile, 
     onDeleteActivity, 
@@ -34,7 +32,6 @@ const Feed: React.FC<FeedProps> = ({
     isLoadingMore = false,
     onViewActivityDetail,
 }) => {
-    const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
     const [pullStart, setPullStart] = useState<number>(0);
     const [pullDistance, setPullDistance] = useState<number>(0);
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -70,9 +67,16 @@ const Feed: React.FC<FeedProps> = ({
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isLoadingMore, onLoadMore]);
 
-    const toggleComments = (activityId: string) => {
-        setOpenCommentSectionId(prevId => (prevId === activityId ? null : activityId));
-    };
+    const replyCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        activities.forEach((activity) => {
+            const parentId = activity.replyingTo?.activityId;
+            if (parentId) {
+                counts.set(parentId, (counts.get(parentId) ?? 0) + 1);
+            }
+        });
+        return counts;
+    }, [activities]);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         if (!onRefresh || isRefreshing) return;
@@ -137,10 +141,7 @@ const Feed: React.FC<FeedProps> = ({
                     <ActivityCard
                         key={activity.id}
                         activity={activity}
-                        isCommentSectionOpen={openCommentSectionId === activity.id}
-                        onToggleComments={() => toggleComments(activity.id)}
-                        onAddComment={onAddComment}
-                        onAddReply={onAddReply}
+                        onReply={onReply}
                         onViewProfile={onViewProfile}
                         onToggleLike={onToggleLike}
                         onDelete={onDeleteActivity}
@@ -151,6 +152,7 @@ const Feed: React.FC<FeedProps> = ({
                                 : undefined
                         }
                         isHighlighted={activity.id === highlightedPostId}
+                        replyCount={replyCounts.get(activity.id) ?? 0}
                     />
                 ))
             ) : (

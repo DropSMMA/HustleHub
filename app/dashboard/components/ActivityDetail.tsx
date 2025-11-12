@@ -6,74 +6,83 @@ import { ThumbsUpFilledIcon } from "./icons/ThumbsUpFilledIcon";
 import { CommentIcon } from "./icons/CommentIcon";
 import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
-import CommentItem from "./CommentItem";
+import ActivityCard from "./ActivityCard";
 
 interface ActivityDetailProps {
   activity: Activity;
+  activities: Activity[];
   currentUser: UserProfile | null;
   onBack: () => void;
-  onAddComment: (
-    activityId: string,
-    commentText: string
-  ) => Promise<void> | void;
-  onAddReply: (
-    activityId: string,
-    parentCommentId: string,
-    replyText: string
-  ) => Promise<void> | void;
+  onReply: (activity: Activity) => void;
   onToggleLike: (activityId: string) => Promise<void> | void;
   onDeleteActivity?: (activityId: string) => void;
   onViewProfile: (username: string) => Promise<void> | void;
   onOpenImage?: (url: string) => void;
-  highlightedCommentId?: string | null;
+  highlightedReplyId?: string | null;
+  onViewActivityDetail: (activityId: string) => void;
 }
 
 const ActivityDetail: React.FC<ActivityDetailProps> = ({
   activity,
+  activities,
   currentUser,
   onBack,
-  onAddComment,
-  onAddReply,
+  onReply,
   onToggleLike,
   onDeleteActivity,
   onViewProfile,
   onOpenImage,
-  highlightedCommentId,
+  highlightedReplyId,
+  onViewActivityDetail,
 }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
   const [isLiked, setIsLiked] = useState(Boolean(activity.likedByCurrentUser));
   const [kudosCount, setKudosCount] = useState(activity.kudos);
+  const replySectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setIsLiked(Boolean(activity.likedByCurrentUser));
     setKudosCount(activity.kudos);
   }, [activity.id, activity.kudos, activity.likedByCurrentUser]);
 
+  const replyCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    activities.forEach((candidate) => {
+      const parentId = candidate.replyingTo?.activityId;
+      if (parentId) {
+        counts.set(parentId, (counts.get(parentId) ?? 0) + 1);
+      }
+    });
+    return counts;
+  }, [activities]);
+
+  const replies = useMemo(
+    () =>
+      activities.filter(
+        (candidate) => candidate.replyingTo?.activityId === activity.id
+      ),
+    [activities, activity.id]
+  );
+
   useEffect(() => {
-    if (!highlightedCommentId) {
+    if (!highlightedReplyId) {
       return;
     }
-    const element = document.getElementById(`comment-${highlightedCommentId}`);
+    const element = document.getElementById(`post-${highlightedReplyId}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      element.classList.add("animate-pulse");
+      element.classList.add("ring-2", "ring-brand-neon");
       const timeout = window.setTimeout(() => {
-        element.classList.remove("animate-pulse");
+        element.classList.remove("ring-2", "ring-brand-neon");
       }, 2000);
       return () => window.clearTimeout(timeout);
     }
     return undefined;
-  }, [highlightedCommentId, activity.comments]);
-
-  const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const comments = useMemo(() => activity.comments ?? [], [activity.comments]);
+  }, [highlightedReplyId, replies]);
 
   const isOwner = currentUser?.username === activity.username;
-  const commentCount = comments.length;
+  const replyCount = replyCounts.get(activity.id) ?? 0;
 
   const handleLike = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -114,29 +123,12 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     onBack();
   };
 
-  const handlePostComment = async () => {
-    const trimmed = newComment.trim();
-    if (!trimmed || isCommentSubmitting) {
-      return;
-    }
-
-    setIsCommentSubmitting(true);
-    try {
-      await onAddComment(activity.id, trimmed);
-      setNewComment("");
-    } catch (error) {
-      console.error("Failed to submit comment", error);
-    } finally {
-      setIsCommentSubmitting(false);
-    }
-  };
-
   const handleReplyClick = () => {
-    if (commentTextareaRef.current) {
-      commentTextareaRef.current.focus();
-      commentTextareaRef.current.scrollIntoView({
+    onReply(activity);
+    if (replySectionRef.current) {
+      replySectionRef.current.scrollIntoView({
         behavior: "smooth",
-        block: "center",
+        block: "start",
       });
     }
   };
@@ -193,6 +185,14 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
         </div>
 
         <div>
+          {activity.replyingTo && (
+            <p className="text-xs text-brand-text-secondary mb-2">
+              Replying to{" "}
+              <span className="text-brand-neon">
+                @{activity.replyingTo.username}
+              </span>
+            </p>
+          )}
           <p className="text-brand-text-primary text-lg leading-relaxed whitespace-pre-wrap">
             {activity.description}
           </p>
@@ -246,7 +246,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             </button>
             <div className="flex items-center space-x-2 text-brand-text-secondary">
               <CommentIcon />
-              <span className="text-sm font-semibold">{commentCount}</span>
+              <span className="text-sm font-semibold">{replyCount}</span>
             </div>
           </div>
         </div>
@@ -267,66 +267,34 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
         </div>
       </div>
 
-      <div className="bg-brand-secondary/60 border border-brand-tertiary/30 rounded-2xl p-4 space-y-4">
-        <div className="flex items-start space-x-3">
-          <img
-            className="h-10 w-10 rounded-full object-cover"
-            src={
-              currentUser?.avatar || "https://i.pravatar.cc/150?u=currentuser"
-            }
-            alt="Your avatar"
-          />
-          <div className="flex-1">
-            <textarea
-              placeholder="Add a comment..."
-              rows={3}
-              value={newComment}
-              onChange={(event) => setNewComment(event.target.value)}
-              ref={commentTextareaRef}
-              className="w-full bg-brand-tertiary border border-transparent rounded-xl p-3 text-sm focus:ring-brand-neon focus:border-brand-neon transition-colors"
-            />
-            <div className="flex justify-end items-center mt-3">
-              <button
-                onClick={handlePostComment}
-                disabled={!newComment.trim() || isCommentSubmitting}
-                className="bg-brand-neon text-brand-primary text-xs font-bold py-2 px-4 rounded-md hover:bg-green-400 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-              >
-                {isCommentSubmitting ? "Posting…" : "Post Comment"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {comments.length > 0 && (
+      <div ref={replySectionRef} className="space-y-4">
+        {replies.length > 0 && (
           <h3 className="font-bold text-lg text-brand-text-primary pt-2">
             Replies
           </h3>
         )}
-        {comments.length > 0 ? (
+        {replies.length > 0 ? (
           <div className="space-y-4">
-            {comments.map((comment) => {
-              const isHighlighted = comment.id === highlightedCommentId;
-              return (
-                <div
-                  key={comment.id}
-                  id={`comment-${comment.id}`}
-                  className={`rounded-xl p-1 transition-colors ${
-                    isHighlighted ? "ring-2 ring-brand-neon" : ""
-                  }`}
-                >
-                  <CommentItem
-                    activityId={activity.id}
-                    comment={comment}
-                    onAddReply={onAddReply}
-                    currentUser={currentUser}
-                  />
-                </div>
-              );
-            })}
+            {replies.map((reply) => (
+              <ActivityCard
+                key={reply.id}
+                activity={reply}
+                onReply={onReply}
+                onViewProfile={onViewProfile}
+                onToggleLike={onToggleLike}
+                onDelete={onDeleteActivity}
+                currentUser={currentUser}
+                onClick={() => onViewActivityDetail(reply.id)}
+                replyCount={replyCounts.get(reply.id) ?? 0}
+                isHighlighted={reply.id === highlightedReplyId}
+              />
+            ))}
           </div>
-        ) : null}
+        ) : (
+          <p className="text-sm text-brand-text-secondary text-center py-6">
+            No replies yet. Join the conversation!
+          </p>
+        )}
       </div>
 
       <ConfirmationModal

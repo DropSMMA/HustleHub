@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Activity, UserProfile } from '@/app/types';
 import ActivityCard from './ActivityCard';
 import { CloseIcon } from './icons/CloseIcon';
@@ -7,25 +7,23 @@ interface ActivityModalProps {
     activity: Activity;
     currentUser: UserProfile | null;
     onClose: () => void;
-    onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
+    onReply: (activity: Activity) => void;
     onViewProfile: (username: string) => Promise<void> | void;
     onToggleLike: (activityId: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
+    replyCount?: number;
 }
 
 const ActivityModal: React.FC<ActivityModalProps> = ({
     activity,
     currentUser,
     onClose,
-    onAddComment,
-    onAddReply,
+    onReply,
     onViewProfile,
     onToggleLike,
-    onDeleteActivity
+    onDeleteActivity,
+    replyCount = 0,
 }) => {
-    const [isCommentSectionOpen, setIsCommentSectionOpen] = useState(true);
-
     return (
         <div 
             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in"
@@ -43,14 +41,12 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
                 <div className="p-4 pt-0">
                     <ActivityCard 
                         activity={activity}
-                        isCommentSectionOpen={isCommentSectionOpen}
-                        onToggleComments={() => setIsCommentSectionOpen(!isCommentSectionOpen)}
-                        onAddComment={onAddComment}
-                        onAddReply={onAddReply}
+                        onReply={onReply}
                         onViewProfile={onViewProfile}
                         onToggleLike={onToggleLike}
                         onDelete={onDeleteActivity}
                         currentUser={currentUser}
+                        replyCount={replyCount}
                     />
                 </div>
             </div>

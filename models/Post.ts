@@ -15,6 +15,12 @@ export interface IComment extends IReply {
   replies?: IReply[];
 }
 
+interface ReplyingToSnapshot {
+  postId: Types.ObjectId;
+  username: string;
+  name?: string;
+}
+
 export interface IPost extends Document {
   userId: Types.ObjectId;
   username: string;
@@ -27,6 +33,7 @@ export interface IPost extends Document {
   kudos: number;
   likedBy: Types.ObjectId[];
   comments: IComment[];
+  replyingTo?: ReplyingToSnapshot | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +63,15 @@ const commentSchema = new Schema<IComment>(
   { _id: false }
 );
 
+const replyingToSchema = new Schema<ReplyingToSnapshot>(
+  {
+    postId: { type: Schema.Types.ObjectId, ref: "Post", required: true },
+    username: { type: String, required: true },
+    name: { type: String },
+  },
+  { _id: false }
+);
+
 const postSchema = new Schema<IPost>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -79,6 +95,10 @@ const postSchema = new Schema<IPost>(
     comments: {
       type: [commentSchema],
       default: [],
+    },
+    replyingTo: {
+      type: replyingToSchema,
+      default: null,
     },
   },
   {

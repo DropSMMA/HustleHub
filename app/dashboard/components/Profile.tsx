@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, useRef } from "react";
+import React, { useState, useEffect, ChangeEvent, useRef, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { UserProfile, FocusArea, Activity, View } from "@/app/types";
 import apiClient from "@/libs/api";
@@ -18,19 +18,12 @@ interface ProfileProps {
   onViewConnections: (username: string) => void;
   activities: Activity[];
   onDeleteActivity: (activityId: string) => void;
-  onAddComment: (
-    activityId: string,
-    commentText: string
-  ) => Promise<void> | void;
-  onAddReply: (
-    activityId: string,
-    parentCommentId: string,
-    replyText: string
-  ) => Promise<void> | void;
+  onReply: (activity: Activity) => void;
   onToggleLike: (activityId: string) => Promise<void> | void;
   onViewProfile: (username: string) => Promise<void> | void;
   setCurrentView: (view: View) => void;
   onViewActivityDetail?: (activityId: string) => void;
+  allActivities?: Activity[];
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({
@@ -83,29 +76,20 @@ const Profile: React.FC<ProfileProps> = ({
   onViewConnections,
   activities,
   onDeleteActivity,
-  onAddComment,
-  onAddReply,
+  onReply,
   onToggleLike,
   onViewProfile,
   setCurrentView,
   onViewActivityDetail,
+  allActivities,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(
     userProfile
   );
-  const [openCommentSectionId, setOpenCommentSectionId] = useState<
-    string | null
-  >(null);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const avatarObjectUrlRef = useRef<string | null>(null);
-
-  const toggleComments = (activityId: string) => {
-    setOpenCommentSectionId((prevId) =>
-      prevId === activityId ? null : activityId
-    );
-  };
 
   useEffect(() => {
     if (!isEditing) {
@@ -327,6 +311,18 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const socials = userProfile.socials;
+
+  const replyCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const source = allActivities ?? activities;
+    source.forEach((activity) => {
+      const parentId = activity.replyingTo?.activityId;
+      if (parentId) {
+        counts.set(parentId, (counts.get(parentId) ?? 0) + 1);
+      }
+    });
+    return counts;
+  }, [activities, allActivities]);
 
   return (
     <div className="container mx-auto px-4 max-w-lg space-y-6 animate-fade-in">
@@ -583,10 +579,7 @@ const Profile: React.FC<ProfileProps> = ({
               <ActivityCard
                 key={activity.id}
                 activity={activity}
-                isCommentSectionOpen={openCommentSectionId === activity.id}
-                onToggleComments={() => toggleComments(activity.id)}
-                onAddComment={onAddComment}
-                onAddReply={onAddReply}
+                onReply={onReply}
                 onViewProfile={onViewProfile}
                 onToggleLike={onToggleLike}
                 onDelete={onDeleteActivity}
@@ -596,6 +589,7 @@ const Profile: React.FC<ProfileProps> = ({
                     ? () => onViewActivityDetail(activity.id)
                     : undefined
                 }
+                replyCount={replyCounts.get(activity.id) ?? 0}
               />
             ))}
           </div>

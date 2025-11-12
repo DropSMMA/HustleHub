@@ -19,15 +19,20 @@ export interface Activity {
   user: string;
   username: string;
   avatar: string;
-  type: ActivityType;
+  type?: ActivityType;
   description: string;
   stats: string;
   image?: string;
   kudos: number;
   likedByCurrentUser?: boolean;
   likedBy?: string[];
-  comments: Comment[];
+  comments?: Comment[];
   timestamp: string;
+  replyingTo?: {
+    activityId: string;
+    username: string;
+    name?: string | null;
+  };
 }
 
 export interface Challenge {

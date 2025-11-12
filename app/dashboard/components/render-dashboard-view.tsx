@@ -21,15 +21,7 @@ import { MOCK_USER_PROFILES } from "../lib/dashboard-constants";
 
 interface CommonFeedProps {
   activities: Activity[];
-  onAddComment: (
-    activityId: string,
-    commentText: string
-  ) => Promise<void> | void;
-  onAddReply: (
-    activityId: string,
-    parentCommentId: string,
-    replyText: string
-  ) => Promise<void> | void;
+  onReply: (activity: Activity) => void;
   onToggleLike: (activityId: string) => Promise<void> | void;
   onViewProfile: (username: string) => Promise<void> | void;
   onDeleteActivity: (activityId: string) => void;
@@ -65,8 +57,6 @@ export interface DashboardRenderParams {
   handleViewConnections: (username: string) => void;
   handleSendConnectRequest: (username: string) => Promise<void>;
   pendingConnections: string[];
-  handleAddComment: CommonFeedProps["onAddComment"];
-  handleAddReply: CommonFeedProps["onAddReply"];
   handleToggleLike: CommonFeedProps["onToggleLike"];
   handleViewProfile: CommonFeedProps["onViewProfile"];
   handleDeleteActivity: CommonFeedProps["onDeleteActivity"];
@@ -117,8 +107,6 @@ const renderDashboardView = ({
   handleViewConnections,
   handleSendConnectRequest,
   pendingConnections,
-  handleAddComment,
-  handleAddReply,
   handleToggleLike,
   handleViewProfile,
   handleDeleteActivity,
@@ -174,14 +162,15 @@ const renderDashboardView = ({
       return (
         <ActivityDetail
           activity={activity}
+          activities={activities}
           currentUser={userProfile}
           onBack={handleCloseActivityDetail}
-          onAddComment={handleAddComment}
-          onAddReply={handleAddReply}
+          onReply={commonFeedProps.onReply}
           onToggleLike={handleToggleLike}
           onDeleteActivity={handleDeleteActivity}
           onViewProfile={handleViewProfile}
-          highlightedCommentId={highlightedCommentId}
+          highlightedReplyId={highlightedCommentId}
+          onViewActivityDetail={handleViewActivityDetail}
         />
       );
     }
@@ -234,12 +223,12 @@ const renderDashboardView = ({
             (activity) => activity.username === userProfile?.username
           )}
           onDeleteActivity={handleDeleteActivity}
-          onAddComment={handleAddComment}
-          onAddReply={handleAddReply}
+          onReply={commonFeedProps.onReply}
           onToggleLike={handleToggleLike}
           onViewProfile={handleViewProfile}
           setCurrentView={setCurrentView}
           onViewActivityDetail={handleViewActivityDetail}
+          allActivities={activities}
         />
       );
     case "publicProfile":
@@ -275,12 +264,12 @@ const renderDashboardView = ({
             onViewConnections={handleViewConnections}
             onConnect={handleSendConnectRequest}
             pendingConnections={pendingConnections}
-            onAddComment={handleAddComment}
-            onAddReply={handleAddReply}
+            onReply={commonFeedProps.onReply}
             onToggleLike={handleToggleLike}
             onDeleteActivity={handleDeleteActivity}
             onViewProfile={handleViewProfile}
             onViewActivityDetail={handleViewActivityDetail}
+            allActivities={activities}
           />
         );
       }

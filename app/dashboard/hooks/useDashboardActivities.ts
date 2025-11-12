@@ -1,19 +1,11 @@
 import { useCallback, useState } from "react";
 import { toast } from "react-hot-toast";
-import {
-  Activity,
-  Challenge,
-  Comment,
-  UserChallenge,
-  UserProfile,
-} from "@/app/types";
+import { Activity, Challenge, UserChallenge, UserProfile } from "@/app/types";
 import apiClient from "@/libs/api";
 import {
-  DEFAULT_AVATAR,
   DEFAULT_POST_LIMIT,
   MOCK_ACTIVITIES,
   createWelcomeActivity,
-  generateLocalId,
   isMongoObjectId,
 } from "../lib/dashboard-constants";
 import { mapPostsToActivities, PostDTO } from "../lib/normalizers";
@@ -149,157 +141,6 @@ export const useDashboardActivities = ({
     [challenges, onActivityLogged, setUserChallenges]
   );
 
-  const handleAddComment = useCallback(
-    async (activityId: string, commentText: string) => {
-      const trimmed = commentText.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      if (!userProfile) {
-        toast.error("Complete your profile to comment.");
-        return;
-      }
-
-      if (!isMongoObjectId(activityId)) {
-        const newComment: Comment = {
-          id: generateLocalId(),
-          user: userProfile.name || "You",
-          avatar: userProfile.avatar || DEFAULT_AVATAR,
-          text: trimmed,
-          replies: [],
-        };
-        setActivities((prevActivities) =>
-          prevActivities.map((activity) =>
-            activity.id === activityId
-              ? {
-                  ...activity,
-                  comments: [...activity.comments, newComment],
-                }
-              : activity
-          )
-        );
-        return;
-      }
-
-      const previousActivities = activities;
-
-      try {
-        const { comment } = (await apiClient.post(
-          `/posts/${activityId}/comments`,
-          { text: trimmed }
-        )) as { comment: Comment };
-
-        const hydratedComment: Comment = {
-          ...comment,
-          replies: comment.replies ?? [],
-        };
-
-        setActivities((prevActivities) =>
-          prevActivities.map((activity) =>
-            activity.id === activityId
-              ? {
-                  ...activity,
-                  comments: [...activity.comments, hydratedComment],
-                }
-              : activity
-          )
-        );
-      } catch (error) {
-        console.error("Failed to add comment", error);
-        toast.error("Unable to add comment. Please try again.");
-        setActivities(previousActivities);
-        throw error;
-      }
-    },
-    [activities, userProfile]
-  );
-
-  const handleAddReply = useCallback(
-    async (activityId: string, parentCommentId: string, replyText: string) => {
-      const trimmed = replyText.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      if (!userProfile) {
-        toast.error("Complete your profile to reply.");
-        return;
-      }
-
-      if (!isMongoObjectId(activityId)) {
-        const newReply: Comment = {
-          id: generateLocalId(),
-          user: userProfile.name || "You",
-          avatar: userProfile.avatar || DEFAULT_AVATAR,
-          text: trimmed,
-        };
-
-        setActivities((prevActivities) =>
-          prevActivities.map((activity) => {
-            if (activity.id !== activityId) {
-              return activity;
-            }
-
-            const updatedComments = activity.comments.map((comment) => {
-              if (comment.id !== parentCommentId) {
-                return comment;
-              }
-              return {
-                ...comment,
-                replies: [...(comment.replies || []), newReply],
-              };
-            });
-
-            return {
-              ...activity,
-              comments: updatedComments,
-            };
-          })
-        );
-        return;
-      }
-
-      const previousActivities = activities;
-
-      try {
-        const { comment } = (await apiClient.post(
-          `/posts/${activityId}/comments`,
-          { text: trimmed, parentId: parentCommentId }
-        )) as { comment: Comment };
-
-        setActivities((prevActivities) =>
-          prevActivities.map((activity) => {
-            if (activity.id !== activityId) {
-              return activity;
-            }
-
-            const updatedComments = activity.comments.map((existing) => {
-              if (existing.id !== parentCommentId) {
-                return existing;
-              }
-              return {
-                ...existing,
-                replies: [...(existing.replies || []), comment],
-              };
-            });
-
-            return {
-              ...activity,
-              comments: updatedComments,
-            };
-          })
-        );
-      } catch (error) {
-        console.error("Failed to add reply", error);
-        toast.error("Unable to add reply. Please try again.");
-        setActivities(previousActivities);
-        throw error;
-      }
-    },
-    [activities, userProfile]
-  );
-
   const handleToggleLike = useCallback(
     async (activityId: string) => {
       if (!userProfile) {
@@ -425,8 +266,6 @@ export const useDashboardActivities = ({
     setHasLoadedPosts,
     fetchPosts,
     handleLogActivity,
-    handleAddComment,
-    handleAddReply,
     handleToggleLike,
     handleDeleteActivity,
     handleLoadMoreActivities,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserProfile, Activity } from '@/app/types';
 import { BackIcon } from './icons/BackIcon';
 import ActivityCard from './ActivityCard';
@@ -16,12 +16,12 @@ interface PublicProfileProps {
     onViewConnections: (username: string) => void;
     onConnect: (username:string) => void;
     pendingConnections: string[];
-    onAddComment: (activityId: string, commentText: string) => Promise<void> | void;
-    onAddReply: (activityId: string, parentCommentId: string, replyText: string) => Promise<void> | void;
+    onReply: (activity: Activity) => void;
     onToggleLike: (activityId: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
     onViewProfile: (username: string) => Promise<void> | void;
     onViewActivityDetail?: (activityId: string) => void;
+    allActivities?: Activity[];
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({ value, label }) => (
@@ -39,19 +39,13 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
     onViewConnections,
     onConnect,
     pendingConnections,
-    onAddComment,
-    onAddReply,
+    onReply,
     onToggleLike,
     onDeleteActivity,
     onViewProfile,
     onViewActivityDetail,
+    allActivities,
 }) => {
-    const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
-
-    const toggleComments = (activityId: string) => {
-        setOpenCommentSectionId(prevId => (prevId === activityId ? null : activityId));
-    };
-
     if (!user) {
         return (
             <div className="container mx-auto px-4 max-w-lg text-center">
@@ -66,6 +60,18 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
     const isConnected = currentUser?.connections.includes(user.username);
     const isPending = pendingConnections.includes(user.username);
     const isSelf = currentUser?.username === user.username;
+
+    const replyCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        const source = allActivities ?? activities;
+        source.forEach((activity) => {
+            const parentId = activity.replyingTo?.activityId;
+            if (parentId) {
+                counts.set(parentId, (counts.get(parentId) ?? 0) + 1);
+            }
+        });
+        return counts;
+    }, [activities, allActivities]);
 
     const renderConnectButton = () => {
         if (isSelf) {
@@ -159,19 +165,17 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
                             <ActivityCard
                                 key={activity.id}
                                 activity={activity}
-                                isCommentSectionOpen={openCommentSectionId === activity.id}
-                                onToggleComments={() => toggleComments(activity.id)}
-                                onAddComment={onAddComment}
-                                onAddReply={onAddReply}
+                                onReply={onReply}
                                 onViewProfile={onViewProfile}
                                 onToggleLike={onToggleLike}
                                 onDelete={onDeleteActivity}
                                 currentUser={currentUser}
-                            onClick={
-                                onViewActivityDetail
-                                    ? () => onViewActivityDetail(activity.id)
-                                    : undefined
-                            }
+                                onClick={
+                                    onViewActivityDetail
+                                        ? () => onViewActivityDetail(activity.id)
+                                        : undefined
+                                }
+                                replyCount={replyCounts.get(activity.id) ?? 0}
                             />
                         ))}
                     </div>

@@ -12,7 +12,7 @@ export interface PostDTO {
   username?: string;
   name?: string;
   avatar?: string;
-  type: ActivityType;
+  type?: ActivityType;
   description: string;
   stats?: string;
   image?: string;
@@ -23,6 +23,11 @@ export interface PostDTO {
   createdAt: string;
   updatedAt: string;
   owner?: PostOwnerDTO;
+  replyingTo?: {
+    activityId: string;
+    username: string;
+    name?: string | null;
+  };
 }
 
 const FALLBACK_AVATAR =
@@ -93,6 +98,7 @@ export const mapPostToActivity = (post: PostDTO): Activity => ({
   likedBy: post.likedBy ?? [],
   comments: post.comments ?? [],
   timestamp: formatRelativeTime(post.createdAt),
+  replyingTo: post.replyingTo,
 });
 
 export const mapPostsToActivities = (posts: PostDTO[]): Activity[] =>

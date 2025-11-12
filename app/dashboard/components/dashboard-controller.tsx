@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
 import {
   Activity,
   View,
@@ -62,6 +63,9 @@ const DashboardController: React.FC = () => {
   >(null);
   const [previousView, setPreviousView] = useState<View>("feed");
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [replyingToActivity, setReplyingToActivity] = useState<Activity | null>(
+    null
+  );
 
   const {
     notifications,
@@ -78,8 +82,6 @@ const DashboardController: React.FC = () => {
     setHasLoadedPosts,
     fetchPosts,
     handleLogActivity,
-    handleAddComment,
-    handleAddReply,
     handleToggleLike,
     handleDeleteActivity,
     handleLoadMoreActivities,
@@ -92,6 +94,7 @@ const DashboardController: React.FC = () => {
     onActivityLogged: () => {
       setIsLogModalOpen(false);
       setCurrentView("feed");
+      setReplyingToActivity(null);
     },
   });
 
@@ -214,6 +217,28 @@ const DashboardController: React.FC = () => {
     [currentView]
   );
 
+  const handleStartReply = useCallback(
+    (activity: Activity) => {
+      if (!userProfile) {
+        toast.error("Complete your profile to reply.");
+        return;
+      }
+      setReplyingToActivity(activity);
+      setIsLogModalOpen(true);
+    },
+    [userProfile]
+  );
+
+  const handleOpenNewPostModal = useCallback(() => {
+    setReplyingToActivity(null);
+    setIsLogModalOpen(true);
+  }, []);
+
+  const handleCloseLogModal = useCallback(() => {
+    setIsLogModalOpen(false);
+    setReplyingToActivity(null);
+  }, []);
+
   const handleCloseActivityDetail = useCallback(() => {
     setViewingActivityId(null);
     setHighlightedCommentId(null);
@@ -282,8 +307,7 @@ const DashboardController: React.FC = () => {
 
   const commonFeedProps = {
     activities: activities,
-    onAddComment: handleAddComment,
-    onAddReply: handleAddReply,
+    onReply: handleStartReply,
     onToggleLike: handleToggleLike,
     onViewProfile: handleViewProfile,
     onDeleteActivity: handleDeleteActivity,
@@ -316,8 +340,6 @@ const DashboardController: React.FC = () => {
     handleViewConnections,
     handleSendConnectRequest,
     pendingConnections,
-    handleAddComment,
-    handleAddReply,
     handleToggleLike,
     handleViewProfile,
     handleDeleteActivity,
@@ -348,7 +370,7 @@ const DashboardController: React.FC = () => {
       <main className="pb-24 pt-16">{viewContent}</main>
       {currentView === "feed" && (
         <button
-          onClick={() => setIsLogModalOpen(true)}
+          onClick={handleOpenNewPostModal}
           className="fixed bottom-20 right-4 bg-brand-neon text-brand-primary p-4 rounded-full shadow-lg hover:bg-green-400 transition-transform duration-200 hover:scale-110 z-30 animate-pop"
           aria-label="Log new activity"
         >
@@ -358,9 +380,10 @@ const DashboardController: React.FC = () => {
       <BottomNav currentView={currentView} setCurrentView={setCurrentView} />
       <LogActivity
         isOpen={isLogModalOpen}
-        onClose={() => setIsLogModalOpen(false)}
+        onClose={handleCloseLogModal}
         onPostCreated={handleLogActivity}
         userProfile={userProfile}
+        replyingToActivity={replyingToActivity}
       />
     </div>
   );

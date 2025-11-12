@@ -19,6 +19,7 @@ interface LogActivityProps {
   onClose: () => void;
   onPostCreated: (activity: Activity) => void;
   userProfile: UserProfile | null;
+  replyingToActivity?: Activity | null;
 }
 
 const activityTypes = Object.values(ActivityType);
@@ -28,6 +29,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onClose,
   onPostCreated,
   userProfile,
+  replyingToActivity = null,
 }) => {
   const [type, setType] = useState<ActivityType | null>(null);
   const [description, setDescription] = useState("");
@@ -38,8 +40,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const isReplyMode = Boolean(replyingToActivity);
+
   const resetState = () => {
-    setType(null);
+    setType(replyingToActivity?.type ?? null);
     setDescription("");
     setStats("");
     if (imagePreview) {
@@ -53,9 +57,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   useEffect(() => {
     if (!isOpen) {
-      setTimeout(resetState, 300); // Delay reset to allow for closing animation
+      setTimeout(resetState, 300);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    setType(replyingToActivity?.type ?? null);
+  }, [replyingToActivity]);
 
   useEffect(() => {
     return () => {
@@ -92,7 +100,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!type || !description.trim() || isSubmitting) return;
+    const trimmedDescription = description.trim();
+    if (!trimmedDescription || isSubmitting) return;
+    if (!isReplyMode && !type) return;
 
     setIsSubmitting(true);
 
@@ -120,20 +130,49 @@ const LogActivity: React.FC<LogActivityProps> = ({
         imageUrl = fileUrl;
       }
 
-      const payload = {
-        type,
-        description: description.trim(),
-        stats: stats.trim() ? stats.trim() : undefined,
-        image: imageUrl,
+      const basePayload: Record<string, unknown> = {
+        description: trimmedDescription,
       };
 
-      const { post } = (await apiClient.post("/posts", payload)) as {
+      if (stats.trim()) {
+        basePayload.stats = stats.trim();
+      }
+
+      if (imageUrl) {
+        basePayload.image = imageUrl;
+      }
+
+      if (isReplyMode && replyingToActivity) {
+        basePayload.replyingTo = {
+          activityId: replyingToActivity.id,
+        };
+        if (type) {
+          basePayload.type = type;
+        }
+      } else if (type) {
+        basePayload.type = type;
+      }
+
+      const { post } = (await apiClient.post("/posts", basePayload)) as {
         post: PostDTO;
       };
 
       const activity = mapPostToActivity(post);
-      onPostCreated(activity);
-      toast.success("Your hustle is live!");
+      const enrichedActivity = replyingToActivity
+        ? {
+            ...activity,
+            replyingTo:
+              activity.replyingTo ?? {
+                activityId: replyingToActivity.id,
+                username: replyingToActivity.username,
+                name: replyingToActivity.user,
+              },
+          }
+        : activity;
+
+      onPostCreated(enrichedActivity);
+      toast.success(isReplyMode ? "Reply posted!" : "Your hustle is live!");
+      resetState();
     } catch (error) {
       console.error("Failed to publish activity", error);
       toast.error("Unable to publish your hustle. Please try again.");
@@ -165,10 +204,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
             >
               <CloseIcon />
             </button>
-            <h2 className="text-lg font-bold">New Hustle</h2>
+            <h2 className="text-lg font-bold">
+              {isReplyMode ? "Your Reply" : "New Hustle"}
+            </h2>
             <button
               onClick={handleSubmit}
-              disabled={!description.trim() || !type || isSubmitting}
+              disabled={!description.trim() || (!type && !isReplyMode) || isSubmitting}
               className="bg-brand-neon text-brand-primary font-bold py-2 px-5 rounded-lg transition-all duration-200 disabled:bg-brand-tertiary disabled:text-gray-500 disabled:cursor-not-allowed hover:bg-green-400"
             >
               {isSubmitting ? (
@@ -178,6 +219,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
               )}
             </button>
           </div>
+
+          {isReplyMode && replyingToActivity && (
+            <div className="mb-3 text-xs text-brand-text-secondary">
+              Replying to <span className="text-brand-neon">@{replyingToActivity.username}</span>
+            </div>
+          )}
 
           <div className="flex space-x-3 mt-4">
             <img
@@ -189,7 +236,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={`What's your hustle, ${userProfile.name}?`}
+                placeholder={
+                  isReplyMode
+                    ? `Replying to ${replyingToActivity?.user ?? "this post"}...`
+                    : `What's your hustle, ${userProfile.name}?`
+                }
                 className="w-full bg-transparent text-lg text-white placeholder-gray-500 focus:outline-none resize-none"
                 rows={3}
               />
@@ -231,16 +282,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
           <div className="mt-4 pt-3 border-t border-brand-tertiary/50 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowTypeSelector(!showTypeSelector)}
-                className={`p-2 rounded-full transition-colors ${
-                  showTypeSelector || type
-                    ? "text-brand-neon bg-brand-neon/10"
-                    : "text-gray-400 hover:bg-brand-tertiary"
-                }`}
-              >
-                <TagIcon />
-              </button>
+              {!isReplyMode && (
+                <button
+                  onClick={() => setShowTypeSelector(!showTypeSelector)}
+                  className={`p-2 rounded-full transition-colors ${
+                    showTypeSelector || type
+                      ? "text-brand-neon bg-brand-neon/10"
+                      : "text-gray-400 hover:bg-brand-tertiary"
+                  }`}
+                >
+                  <TagIcon />
+                </button>
+              )}
               <button
                 onClick={() => imageInputRef.current?.click()}
                 className={`p-2 rounded-full transition-colors ${
@@ -267,12 +320,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   onChange={(e) => setStats(e.target.value)}
                   placeholder="Stats (e.g., 5km)"
                   className="bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none w-32"
+                  disabled={isReplyMode}
                 />
               </div>
             </div>
           </div>
 
-          {showTypeSelector && (
+          {!isReplyMode && showTypeSelector && (
             <div className="mt-4 border-t border-brand-tertiary/50 pt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in">
               {activityTypes.map((activityType) => (
                 <button

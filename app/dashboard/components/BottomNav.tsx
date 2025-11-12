@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { View } from "@/app/types";
 import { HomeIcon } from "./icons/HomeIcon";

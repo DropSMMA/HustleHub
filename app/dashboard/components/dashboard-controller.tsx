@@ -362,16 +362,16 @@ const DashboardController: React.FC = () => {
   });
 
   return (
-    <div className="bg-brand-primary min-h-dvh font-sans text-white flex flex-col">
+    <div className="bg-brand-primary h-dvh font-sans text-white flex flex-col overflow-hidden overscroll-y-none">
       <Header
         unreadNotifications={unreadNotificationsCount}
         setCurrentView={setCurrentView}
       />
-      <main className="flex-1 pb-28 pt-16">{viewContent}</main>
+      <main className="flex-1 overflow-y-auto pb-28 pt-16">{viewContent}</main>
       {currentView === "feed" && (
         <button
           onClick={handleOpenNewPostModal}
-          className="fixed bottom-20 right-4 bg-brand-neon text-brand-primary p-4 rounded-full shadow-lg hover:bg-green-400 transition-transform duration-200 hover:scale-110 z-30 animate-pop"
+          className="fixed bottom-24 right-4 bg-brand-neon text-brand-primary p-4 rounded-full shadow-lg hover:bg-green-400 transition-transform duration-200 hover:scale-110 z-30 animate-pop"
           aria-label="Log new activity"
         >
           <PlusIcon />

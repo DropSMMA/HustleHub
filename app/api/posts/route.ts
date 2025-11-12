@@ -5,7 +5,8 @@ import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post, { type IPost } from "@/models/Post";
-import { ActivityType } from "@/app/types";
+import Notification from "@/models/Notification";
+import { ActivityType, NotificationType } from "@/app/types";
 
 type SerializedPost = Record<string, any>;
 
@@ -336,7 +337,10 @@ export async function POST(request: Request) {
       userId: user._id,
       username: user.username,
       name: user.name ?? session.user.name ?? "HustleHub Creator",
-      avatar: user.image ?? session.user.image ?? DEFAULT_AVATAR,
+      avatar:
+        user.image ??
+        session.user.image ??
+        DEFAULT_AVATAR,
       ...(resolvedType ? { type: resolvedType } : {}),
       description: payload.description,
       stats: payload.stats,
@@ -346,6 +350,58 @@ export async function POST(request: Request) {
       comments: [],
       replyingTo: replyingToSnapshot,
     });
+
+    if (replyingToSnapshot && parentPost) {
+      const parentOwnerId =
+        parentPost.userId instanceof mongoose.Types.ObjectId
+          ? parentPost.userId
+          : new mongoose.Types.ObjectId(parentPost.userId as any);
+      const isSelfReply = parentOwnerId.equals(user._id as mongoose.Types.ObjectId);
+
+      if (!isSelfReply) {
+        const actorUsername =
+          typeof user.username === "string" && user.username.length > 0
+            ? user.username
+            : typeof session.user?.email === "string"
+            ? session.user.email.split("@")[0] ?? user._id.toString()
+            : user._id.toString();
+        const actorName =
+          typeof user.name === "string" && user.name.length > 0
+            ? user.name
+            : typeof session.user?.name === "string"
+            ? session.user.name
+            : actorUsername;
+        const actorAvatar =
+          typeof user.image === "string" && user.image.length > 0
+            ? user.image
+            : typeof session.user?.image === "string" && session.user.image.length > 0
+            ? session.user.image
+            : DEFAULT_AVATAR;
+
+        const message = parentPost.replyingTo
+          ? "replied to your reply."
+          : "replied to your post.";
+
+        try {
+          await Notification.create({
+            recipient: parentOwnerId,
+            actorId: user._id,
+            actorUsername,
+            actorName,
+            actorAvatar,
+            type: NotificationType.Comment,
+            message,
+            read: false,
+            postId: post._id,
+            metadata: {
+              replyingToPostId: parentPost._id,
+            },
+          });
+        } catch (notificationError) {
+          console.error("[posts][POST][notification]", notificationError);
+        }
+      }
+    }
 
     const ownerOverride = new Map<string, OwnerInfo>();
     const userIdString = toStringId(user._id) ?? user._id.toString();

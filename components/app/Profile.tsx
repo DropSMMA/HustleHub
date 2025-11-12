@@ -30,6 +30,7 @@ interface ProfileProps {
   onToggleLike: (activityId: string) => Promise<void> | void;
   onViewProfile: (username: string) => Promise<void> | void;
   setCurrentView: (view: View) => void;
+  onViewActivityDetail?: (activityId: string) => void;
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({
@@ -87,6 +88,7 @@ const Profile: React.FC<ProfileProps> = ({
   onToggleLike,
   onViewProfile,
   setCurrentView,
+  onViewActivityDetail,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(
@@ -589,6 +591,11 @@ const Profile: React.FC<ProfileProps> = ({
                 onToggleLike={onToggleLike}
                 onDelete={onDeleteActivity}
                 currentUser={userProfile}
+                onClick={
+                  onViewActivityDetail
+                    ? () => onViewActivityDetail(activity.id)
+                    : undefined
+                }
               />
             ))}
           </div>

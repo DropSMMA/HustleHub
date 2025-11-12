@@ -25,6 +25,7 @@ interface ActivityCardProps {
   onDelete?: (activityId: string) => void;
   currentUser: UserProfile | null;
   isHighlighted?: boolean;
+  onClick?: () => void;
 }
 
 const ActivityCard: React.FC<ActivityCardProps> = ({
@@ -38,6 +39,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
   onDelete,
   currentUser,
   isHighlighted = false,
+  onClick,
 }) => {
   const {
     id,
@@ -62,7 +64,8 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
 
   const isOwner = currentUser?.username === username;
 
-  const handleLike = async () => {
+  const handleLike = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     if (isLikePending) return;
     setIsLikePending(true);
     try {
@@ -72,7 +75,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     }
   };
 
-  const handlePostComment = async () => {
+  const handlePostComment = async (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation();
     const trimmed = newComment.trim();
     if (!trimmed || isCommentSubmitting) {
       return;
@@ -89,8 +95,25 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     }
   };
 
-  const handleProfileClick = () => {
+  const handleProfileClick = (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    event.stopPropagation();
     void onViewProfile(username);
+  };
+
+  const handleToggleCommentsClick = (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation();
+    onToggleComments();
+  };
+
+  const handleDeleteClick = (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    event.stopPropagation();
+    setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = () => {
@@ -98,6 +121,30 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
       onDelete(id);
     }
     setIsDeleteModalOpen(false);
+  };
+
+  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!onClick) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, textarea, input, a")) {
+      return;
+    }
+
+    onClick();
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
   };
 
   return (
@@ -108,7 +155,12 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
           isHighlighted
             ? "ring-4 ring-brand-neon ring-offset-4 ring-offset-brand-primary"
             : ""
-        }`}
+        } ${onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-neon" : ""}`}
+        onClick={handleCardClick}
+        onKeyDown={handleCardKeyDown}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        aria-label={onClick ? `Open details for ${type}` : undefined}
       >
         <div className="p-5 flex flex-col gap-4">
           <div className="flex items-start justify-between">
@@ -130,7 +182,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
             </button>
             {isOwner && onDelete && (
               <button
-                onClick={() => setIsDeleteModalOpen(true)}
+                onClick={handleDeleteClick}
                 className="ml-2 flex-shrink-0 text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-red-500/10 transition-colors"
                 aria-label="Delete post"
               >
@@ -181,7 +233,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
               <span className="text-sm font-semibold">{kudos}</span>
             </button>
             <button
-              onClick={onToggleComments}
+              onClick={handleToggleCommentsClick}
               className="flex items-center space-x-2 text-gray-300 hover:text-brand-neon transition-transform duration-200 ease-out hover:scale-110"
             >
               <CommentIcon />
@@ -190,7 +242,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
           </div>
         </div>
         {isCommentSectionOpen && (
-          <div className="p-4 border-t border-brand-tertiary/50 bg-brand-primary/60 backdrop-blur-sm animate-fade-in space-y-4">
+          <div
+            className="p-4 border-t border-brand-tertiary/50 bg-brand-primary/60 backdrop-blur-sm animate-fade-in space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
               {comments.length > 0 ? (
                 comments.map((comment) => (

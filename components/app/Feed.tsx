@@ -16,6 +16,7 @@ interface FeedProps {
     onRefresh?: () => Promise<void>;
     onLoadMore?: () => void;
     isLoadingMore?: boolean;
+    onViewActivityDetail?: (activityId: string) => void;
 }
 
 const Feed: React.FC<FeedProps> = ({ 
@@ -30,7 +31,8 @@ const Feed: React.FC<FeedProps> = ({
     onClearHighlight,
     onRefresh,
     onLoadMore,
-    isLoadingMore = false
+    isLoadingMore = false,
+    onViewActivityDetail,
 }) => {
     const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
     const [pullStart, setPullStart] = useState<number>(0);
@@ -143,6 +145,11 @@ const Feed: React.FC<FeedProps> = ({
                         onToggleLike={onToggleLike}
                         onDelete={onDeleteActivity}
                         currentUser={currentUser}
+                        onClick={
+                            onViewActivityDetail
+                                ? () => onViewActivityDetail(activity.id)
+                                : undefined
+                        }
                         isHighlighted={activity.id === highlightedPostId}
                     />
                 ))

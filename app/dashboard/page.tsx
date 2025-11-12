@@ -33,6 +33,7 @@ import Notifications from "@/components/app/Notifications";
 import Connections from "@/components/app/Connections";
 import Research from "@/components/app/Research";
 import Settings from "@/components/app/Settings";
+import ActivityDetail from "@/components/app/ActivityDetail";
 import { PlusIcon } from "@/components/app/icons/PlusIcon";
 
 const USER_PROFILE_STORAGE_KEY = "hustlehub:userProfile";
@@ -390,6 +391,13 @@ const App: React.FC = () => {
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(
     null
   );
+  const [viewingActivityId, setViewingActivityId] = useState<string | null>(
+    null
+  );
+  const [highlightedCommentId, setHighlightedCommentId] = useState<
+    string | null
+  >(null);
+  const [previousView, setPreviousView] = useState<View>("feed");
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [postsCursor, setPostsCursor] = useState<string | null>(null);
@@ -1438,9 +1446,28 @@ const App: React.FC = () => {
     }
   };
 
+  const handleViewActivityDetail = useCallback(
+    (activityId: string, options?: { commentId?: string }) => {
+      if (currentView !== "activityDetail") {
+        setPreviousView(currentView);
+      }
+      setViewingActivityId(activityId);
+      setHighlightedCommentId(options?.commentId ?? null);
+      setCurrentView("activityDetail");
+    },
+    [currentView]
+  );
+
+  const handleCloseActivityDetail = useCallback(() => {
+    setViewingActivityId(null);
+    setHighlightedCommentId(null);
+    setCurrentView(previousView);
+    setPreviousView("feed");
+  }, [previousView]);
+
   const handleViewActivity = (postId: string) => {
-    setCurrentView("feed");
     setHighlightedPostId(postId);
+    handleViewActivityDetail(postId);
   };
 
   const handleClearHighlightedPost = () => {
@@ -1773,6 +1800,7 @@ const App: React.FC = () => {
     currentUser: userProfile,
     highlightedPostId: highlightedPostId,
     onClearHighlight: handleClearHighlightedPost,
+    onViewActivityDetail: handleViewActivityDetail,
   };
 
   const renderContent = () => {
@@ -1786,6 +1814,42 @@ const App: React.FC = () => {
             isLoadingMore={isLoadingMore}
           />
         );
+      case "activityDetail": {
+        if (!viewingActivityId) {
+          return <Feed {...commonFeedProps} />;
+        }
+        const activity = activities.find(
+          (candidate) => candidate.id === viewingActivityId
+        );
+        if (!activity) {
+          return (
+            <div className="container mx-auto px-4 max-w-lg text-center space-y-4 animate-fade-in">
+              <p className="text-gray-300">
+                We couldn’t find that activity anymore.
+              </p>
+              <button
+                onClick={handleCloseActivityDetail}
+                className="bg-brand-neon text-brand-primary font-bold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
+              >
+                Back
+              </button>
+            </div>
+          );
+        }
+        return (
+          <ActivityDetail
+            activity={activity}
+            currentUser={userProfile}
+            onBack={handleCloseActivityDetail}
+            onAddComment={handleAddComment}
+            onAddReply={handleAddReply}
+            onToggleLike={handleToggleLike}
+            onDeleteActivity={handleDeleteActivity}
+            onViewProfile={handleViewProfile}
+            highlightedCommentId={highlightedCommentId}
+          />
+        );
+      }
       case "insights":
         return (
           <WeeklyInsights
@@ -1840,6 +1904,7 @@ const App: React.FC = () => {
             onToggleLike={handleToggleLike}
             onViewProfile={handleViewProfile}
             setCurrentView={setCurrentView}
+            onViewActivityDetail={handleViewActivityDetail}
           />
         );
       case "publicProfile":
@@ -1880,6 +1945,7 @@ const App: React.FC = () => {
               onToggleLike={handleToggleLike}
               onDeleteActivity={handleDeleteActivity}
               onViewProfile={handleViewProfile}
+              onViewActivityDetail={handleViewActivityDetail}
             />
           );
         }

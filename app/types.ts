@@ -3,7 +3,7 @@ export enum ActivityType {
   StartupTask = "Startup Task",
   Workout = "Workout",
   Recharge = "Recharge",
-  Networking = "Networking"
+  Networking = "Networking",
 }
 
 export interface Comment {
@@ -31,79 +31,89 @@ export interface Activity {
 }
 
 export interface Challenge {
-    id: string;
-    title: string;
-    description: string;
-    badge: string;
-    type: ActivityType;
-    goal: number;
-    trackingMethod: 'streak' | 'count';
-    participants: number;
+  id: string;
+  title: string;
+  description: string;
+  badge: string;
+  type: ActivityType;
+  goal: number;
+  trackingMethod: "streak" | "count";
+  participants: number;
 }
 
 export interface UserChallenge {
-    challengeId: string;
-    progress: number;
-    streak?: number;
-    lastLogDate?: string;
+  challengeId: string;
+  progress: number;
+  streak?: number;
+  lastLogDate?: string;
 }
 
-
-export type View = 'feed' | 'log' | 'insights' | 'research' | 'challenges' | 'profile' | 'publicProfile' | 'notifications' | 'connections' | 'settings';
+export type View =
+  | "feed"
+  | "activityDetail"
+  | "log"
+  | "insights"
+  | "research"
+  | "challenges"
+  | "profile"
+  | "publicProfile"
+  | "notifications"
+  | "connections"
+  | "settings";
 
 export enum FocusArea {
-    DeepWork = "🧠 Deep Work / Coding",
-    Fitness = "💪 Fitness / Health",
-    Startup = "💼 Startup / Business Tasks",
-    Recharge = "🧘 Mental Recharge",
-    Networking = "🌍 Networking / Community",
+  DeepWork = "🧠 Deep Work / Coding",
+  Fitness = "💪 Fitness / Health",
+  Startup = "💼 Startup / Business Tasks",
+  Recharge = "🧘 Mental Recharge",
+  Networking = "🌍 Networking / Community",
 }
 
 export interface UserProfile {
-    username: string;
-    name: string;
-    avatar: string;
-    tagline: string;
-    projects: string;
-    focuses: FocusArea[];
-    connections: string[];
-    socials?: {
-        twitter?: string;
-        github?: string;
-        linkedin?: string;
-        website?: string;
-    };
-    pendingIncoming?: string[];
-    pendingOutgoing?: string[];
+  username: string;
+  name: string;
+  avatar: string;
+  tagline: string;
+  projects: string;
+  focuses: FocusArea[];
+  connections: string[];
+  socials?: {
+    twitter?: string;
+    github?: string;
+    linkedin?: string;
+    website?: string;
+  };
+  pendingIncoming?: string[];
+  pendingOutgoing?: string[];
 }
 
 export enum NotificationType {
-    Comment = 'comment',
-    Kudo = 'kudo',
-    Challenge = 'challenge',
-    System = 'system',
-    ConnectRequest = 'connectRequest',
+  Comment = "comment",
+  Kudo = "kudo",
+  Challenge = "challenge",
+  System = "system",
+  ConnectRequest = "connectRequest",
 }
 
 export interface Notification {
-    id: string;
-    type: NotificationType;
-    message: string;
-    timestamp: string;
-    read: boolean;
-    postId?: string;
-    actor: {
-        name: string;
-        avatar: string;
-        username: string;
-    };
+  id: string;
+  type: NotificationType;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  postId?: string;
+  actor: {
+    name: string;
+    avatar: string;
+    username: string;
+  };
 }
 
 export interface ConnectionPreview {
-    username: string;
-    name: string;
-    avatar: string;
-    tagline: string;
-    focuses: FocusArea[];
-    projects?: string;
+  username: string;
+  name: string;
+  avatar: string;
+  tagline: string;
+  focuses: FocusArea[];
+  projects?: string;
 }

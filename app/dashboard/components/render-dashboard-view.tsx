@@ -1,14 +1,14 @@
 import React from "react";
-import Feed from "@/components/app/Feed";
-import WeeklyInsights from "@/components/app/Dashboard";
-import Challenges from "@/components/app/Challenges";
-import Profile from "@/components/app/Profile";
-import PublicProfile from "@/components/app/PublicProfile";
-import Notifications from "@/components/app/Notifications";
-import Connections from "@/components/app/Connections";
-import Research from "@/components/app/Research";
-import Settings from "@/components/app/Settings";
-import ActivityDetail from "@/components/app/ActivityDetail";
+import Feed from "@/app/dashboard/components/Feed";
+import WeeklyInsights from "@/app/dashboard/components/Dashboard";
+import Challenges from "@/app/dashboard/components/Challenges";
+import Profile from "@/app/dashboard/components/Profile";
+import PublicProfile from "@/app/dashboard/components/PublicProfile";
+import Notifications from "@/app/dashboard/components/Notifications";
+import Connections from "@/app/dashboard/components/Connections";
+import Research from "@/app/dashboard/components/Research";
+import Settings from "@/app/dashboard/components/Settings";
+import ActivityDetail from "@/app/dashboard/components/ActivityDetail";
 import {
   Activity,
   Challenge,
@@ -159,7 +159,9 @@ const renderDashboardView = ({
       if (!activity) {
         return (
           <div className="container mx-auto px-4 max-w-lg text-center space-y-4 animate-fade-in">
-            <p className="text-gray-300">We couldn’t find that activity anymore.</p>
+            <p className="text-gray-300">
+              We couldn’t find that activity anymore.
+            </p>
             <button
               onClick={handleCloseActivityDetail}
               className="bg-brand-neon text-brand-primary font-bold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
@@ -200,7 +202,9 @@ const renderDashboardView = ({
         ? { ...MOCK_USER_PROFILES, [userProfile.username]: userProfile }
         : MOCK_USER_PROFILES;
       const combinedUsers =
-        researchUsers.length > 0 ? researchUsers : Object.values(fallbackDirectory);
+        researchUsers.length > 0
+          ? researchUsers
+          : Object.values(fallbackDirectory);
       return (
         <Research
           allUsers={combinedUsers}
@@ -329,4 +333,3 @@ const renderDashboardView = ({
 };
 
 export default renderDashboardView;
-

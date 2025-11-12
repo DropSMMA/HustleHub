@@ -9,12 +9,12 @@ import {
   Challenge,
   UserChallenge,
 } from "@/app/types";
-import Header from "@/components/app/Header";
-import BottomNav from "@/components/app/BottomNav";
-import LogActivity from "@/components/app/LogActivity";
-import Onboarding from "@/components/app/onboarding/Onboarding";
-import LoadingScreen from "@/components/app/LoadingScreen";
-import { PlusIcon } from "@/components/app/icons/PlusIcon";
+import Header from "@/app/dashboard/components/Header";
+import BottomNav from "@/app/dashboard/components/BottomNav";
+import LogActivity from "@/app/dashboard/components/LogActivity";
+import Onboarding from "@/app/dashboard/components/onboarding/Onboarding";
+import LoadingScreen from "@/app/dashboard/components/LoadingScreen";
+import { PlusIcon } from "@/app/dashboard/components/icons/PlusIcon";
 import { useDashboardActivities } from "../hooks/useDashboardActivities";
 import { useDashboardNotifications } from "../hooks/useDashboardNotifications";
 import { useDashboardConnections } from "../hooks/useDashboardConnections";

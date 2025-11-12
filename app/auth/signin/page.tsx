@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
-import OnboardingStep1 from "@/components/app/onboarding/OnboardingStep1";
+import OnboardingStep1 from "@/app/dashboard/components/onboarding/OnboardingStep1";
 
 const SignInContent: React.FC = () => {
   const searchParams = useSearchParams();

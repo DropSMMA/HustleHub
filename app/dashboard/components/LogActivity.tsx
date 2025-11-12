@@ -330,18 +330,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
           {showTypeSelector && (
             <div className="mt-4 border-t border-brand-tertiary/50 pt-4 space-y-3 animate-fade-in">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {activityTypes.map((activityType) => (
-                  <button
-                    key={activityType}
-                    type="button"
-                    onClick={() => handleSelectType(activityType)}
+              {activityTypes.map((activityType) => (
+                <button
+                  key={activityType}
+                  type="button"
+                  onClick={() => handleSelectType(activityType)}
                     className={`p-3 rounded-lg font-semibold text-center transition-all duration-200 bg-brand-tertiary hover:bg-opacity-80 text-white ${
                       type === activityType ? "ring-2 ring-brand-neon" : ""
                     }`}
-                  >
-                    {activityType}
-                  </button>
-                ))}
+                >
+                  {activityType}
+                </button>
+              ))}
               </div>
             </div>
           )}

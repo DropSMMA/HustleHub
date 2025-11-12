@@ -20,15 +20,15 @@ const replyingToInputSchema = z.object({
 const createPostSchema = z
   .object({
     type: z.nativeEnum(ActivityType).optional(),
-    description: z.string().trim().min(1).max(1000),
-    stats: z.string().trim().max(120).optional(),
-    image: z
-      .string()
-      .trim()
-      .refine((value) => !value || isValidImage(value), {
-        message: "Image must be a valid http(s) URL.",
-      })
-      .optional(),
+  description: z.string().trim().min(1).max(1000),
+  stats: z.string().trim().max(120).optional(),
+  image: z
+    .string()
+    .trim()
+    .refine((value) => !value || isValidImage(value), {
+      message: "Image must be a valid http(s) URL.",
+    })
+    .optional(),
     replyingTo: replyingToInputSchema.optional(),
   })
   .superRefine((data, ctx) => {

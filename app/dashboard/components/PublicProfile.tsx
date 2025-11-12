@@ -170,11 +170,11 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
                                 onToggleLike={onToggleLike}
                                 onDelete={onDeleteActivity}
                                 currentUser={currentUser}
-                                onClick={
-                                    onViewActivityDetail
-                                        ? () => onViewActivityDetail(activity.id)
-                                        : undefined
-                                }
+                            onClick={
+                                onViewActivityDetail
+                                    ? () => onViewActivityDetail(activity.id)
+                                    : undefined
+                            }
                                 replyCount={replyCounts.get(activity.id) ?? 0}
                             />
                         ))}

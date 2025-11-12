@@ -195,9 +195,9 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
               {type && (
-                <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">
-                  {type}
-                </span>
+              <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">
+                {type}
+              </span>
               )}
               {stats && stats.trim().length > 0 && (
                 <span className="text-xs font-semibold bg-brand-tertiary text-gray-300 px-3 py-1 rounded-full">
@@ -215,11 +215,11 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
             className="w-full"
             aria-label="View image"
           >
-            <img
-              className="w-full h-64 object-cover"
-              src={image}
-              alt="Activity"
-            />
+          <img
+            className="w-full h-64 object-cover"
+            src={image}
+            alt="Activity"
+          />
           </button>
         )}
 

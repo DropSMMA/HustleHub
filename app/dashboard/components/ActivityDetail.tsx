@@ -149,7 +149,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   };
 
   return (
-    <div className="container mx-auto px-4 max-w-2xl py-6 space-y-5 animate-fade-in">
+    <div className="container mx-auto px-4 max-w-2xl pt-2 pb-6 space-y-5 animate-fade-in">
       <div className="relative flex items-center h-8">
         <button
           onClick={onBack}

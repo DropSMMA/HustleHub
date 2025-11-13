@@ -33,6 +33,7 @@ interface UseDashboardUserProfileParams {
     replyingTo?: string;
     limit?: number;
   }) => Promise<Activity[]>;
+  fetchUserActivitiesByUsername: (username: string) => Promise<Activity[]>;
   refreshConnections: () => Promise<void>;
   setPendingConnections: React.Dispatch<React.SetStateAction<string[]>>;
   setConnectionDirectory: React.Dispatch<
@@ -65,6 +66,7 @@ const useDashboardUserProfile = ({
   setActivities,
   ensureInitialActivities,
   fetchPosts,
+  fetchUserActivitiesByUsername,
   refreshConnections,
   setPendingConnections,
   setConnectionDirectory,
@@ -302,98 +304,7 @@ const useDashboardUserProfile = ({
             );
           }
 
-          const aggregatedPosts: PostDTO[] = Array.isArray(data.posts)
-            ? [...data.posts]
-            : [];
-
-          const fetchAdditionalPosts = async (cursor: string | null) => {
-            let nextCursor = cursor;
-
-            while (nextCursor) {
-              const params = new URLSearchParams({
-                username: normalizedUsername,
-                categoryOnly: "false",
-                limit: "50",
-              });
-
-              params.set("cursor", nextCursor);
-
-              const postsResponse = await fetch(
-                `/api/posts?${params.toString()}`,
-                {
-                  method: "GET",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  cache: "no-store",
-                }
-              );
-
-              if (!postsResponse.ok) {
-                break;
-              }
-
-              const postsPayload = (await postsResponse.json()) as {
-                posts: PostDTO[];
-                nextCursor: string | null;
-              };
-
-              if (Array.isArray(postsPayload.posts)) {
-                aggregatedPosts.push(...postsPayload.posts);
-              }
-
-              if (!postsPayload.nextCursor || postsPayload.nextCursor === nextCursor) {
-                nextCursor = null;
-              } else {
-                nextCursor = postsPayload.nextCursor;
-              }
-            }
-          };
-
-          await fetchAdditionalPosts(data.nextCursor ?? null);
-
-          const mappedActivities = mapPostsToActivities(aggregatedPosts);
-          const normalizedActivities = mappedActivities.map((activity) => ({
-            ...activity,
-            createdAtIso:
-              activity.createdAtIso ?? new Date().toISOString(),
-          }));
-
-          setActivities((prev) => {
-            if (normalizedActivities.length === 0) {
-              return prev;
-            }
-
-            const indexMap = new Map(
-              prev.map((activity, index) => [activity.id, index])
-            );
-            let hasChanges = false;
-            const updated = [...prev];
-
-            normalizedActivities.forEach((activity) => {
-              const existingIndex = indexMap.get(activity.id);
-              if (existingIndex !== undefined) {
-                const existing = updated[existingIndex];
-                const merged = {
-                  ...existing,
-                  ...activity,
-                };
-
-                merged.replyingTo =
-                  activity.replyingTo === undefined
-                    ? existing.replyingTo
-                    : activity.replyingTo ?? undefined;
-
-                updated[existingIndex] = merged;
-                hasChanges = true;
-              } else {
-                updated.push(activity);
-                hasChanges = true;
-              }
-            });
-
-            return hasChanges ? updated : prev;
-          });
+          await fetchUserActivitiesByUsername(normalizedUsername);
 
           setViewingProfileError(null);
         } else if (response.status === 404) {

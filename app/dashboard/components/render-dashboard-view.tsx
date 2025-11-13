@@ -83,6 +83,7 @@ export interface DashboardRenderParams {
   viewingActivityId: string | null;
   handleCloseActivityDetail: () => void;
   loadingReplyThreads: Record<string, boolean>;
+  userActivitiesByUsername: Record<string, Activity[]>;
 }
 
 const renderDashboardView = ({
@@ -128,6 +129,7 @@ const renderDashboardView = ({
   viewingActivityId,
   handleCloseActivityDetail,
   loadingReplyThreads,
+  userActivitiesByUsername,
 }: DashboardRenderParams): React.ReactNode => {
   switch (currentView) {
     case "feed":
@@ -219,23 +221,48 @@ const renderDashboardView = ({
         />
       );
     case "profile":
-      return (
-        <Profile
-          userProfile={userProfile}
-          onUpdateProfile={handleUpdateProfile}
-          onViewConnections={handleViewConnections}
-          activities={activities.filter(
-            (activity) => activity.username === userProfile?.username
-          )}
-          onDeleteActivity={handleDeleteActivity}
-          onReply={commonFeedProps.onReply}
-          onToggleLike={handleToggleLike}
-          onViewProfile={handleViewProfile}
-          setCurrentView={setCurrentView}
-          onViewActivityDetail={handleViewActivityDetail}
-          allActivities={activities}
-        />
-      );
+      if (!userProfile) {
+        return (
+          <Profile
+            userProfile={null}
+            onUpdateProfile={handleUpdateProfile}
+            onViewConnections={handleViewConnections}
+            activities={[]}
+            onDeleteActivity={handleDeleteActivity}
+            onReply={commonFeedProps.onReply}
+            onToggleLike={handleToggleLike}
+            onViewProfile={handleViewProfile}
+            setCurrentView={setCurrentView}
+            onViewActivityDetail={handleViewActivityDetail}
+            allActivities={activities}
+          />
+        );
+      }
+
+      {
+        const username = userProfile.username;
+        const cachedActivities =
+          userActivitiesByUsername[username] ?? null;
+        const profileActivities =
+          cachedActivities ??
+          activities.filter((activity) => activity.username === username);
+
+        return (
+          <Profile
+            userProfile={userProfile}
+            onUpdateProfile={handleUpdateProfile}
+            onViewConnections={handleViewConnections}
+            activities={profileActivities}
+            onDeleteActivity={handleDeleteActivity}
+            onReply={commonFeedProps.onReply}
+            onToggleLike={handleToggleLike}
+            onViewProfile={handleViewProfile}
+            setCurrentView={setCurrentView}
+            onViewActivityDetail={handleViewActivityDetail}
+            allActivities={cachedActivities ?? activities}
+          />
+        );
+      }
     case "publicProfile":
       if (viewingProfileLoading) {
         return (
@@ -258,13 +285,20 @@ const renderDashboardView = ({
         );
       }
       if (viewingProfile) {
+        const username = viewingProfile.username;
+        const cachedActivities =
+          userActivitiesByUsername[username] ?? null;
+        const publicProfileActivities =
+          cachedActivities ??
+          activities.filter(
+            (activity) => activity.username === viewingProfile.username
+          );
+
         return (
           <PublicProfile
             user={viewingProfile}
             currentUser={userProfile}
-            activities={activities.filter(
-              (activity) => activity.username === viewingProfile.username
-            )}
+            activities={publicProfileActivities}
             onBack={handleClosePublicProfile}
             onViewConnections={handleViewConnections}
             onConnect={handleSendConnectRequest}
@@ -274,7 +308,7 @@ const renderDashboardView = ({
             onDeleteActivity={handleDeleteActivity}
             onViewProfile={handleViewProfile}
             onViewActivityDetail={handleViewActivityDetail}
-            allActivities={activities}
+            allActivities={cachedActivities ?? activities}
           />
         );
       }

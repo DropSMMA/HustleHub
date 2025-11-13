@@ -28,7 +28,6 @@ export interface Activity {
   likedBy?: string[];
   comments?: Comment[];
   timestamp: string;
-  createdAtIso?: string;
   replyingTo?: {
     activityId: string;
     username: string;

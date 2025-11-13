@@ -89,8 +89,9 @@ const DashboardController: React.FC = () => {
     ensureInitialActivities,
     fetchRepliesForActivity,
     loadingReplyThreads,
-    fetchAllActivitiesForUser,
-    loadedUserActivities,
+    fetchUserActivitiesByUsername,
+    loadingUserActivities,
+    userActivitiesByUsername,
   } = useDashboardActivities({
     challenges,
     userProfile,
@@ -148,6 +149,7 @@ const DashboardController: React.FC = () => {
     setActivities,
     ensureInitialActivities,
     fetchPosts,
+    fetchUserActivitiesByUsername,
     refreshConnections,
     setPendingConnections,
     setConnectionDirectory,
@@ -223,19 +225,25 @@ const DashboardController: React.FC = () => {
   const handleViewProfile = handleViewProfileFromHook;
 
   useEffect(() => {
-    if (currentView !== "profile" || !userProfile?.username) {
+    if (currentView !== "profile") {
       return;
     }
 
-    if (loadedUserActivities[userProfile.username.toLowerCase()]) {
+    const username = userProfile?.username;
+
+    if (!username) {
       return;
     }
 
-    void fetchAllActivitiesForUser(userProfile.username);
+    if (loadingUserActivities[username]) {
+      return;
+    }
+
+    void fetchUserActivitiesByUsername(username);
   }, [
     currentView,
-    fetchAllActivitiesForUser,
-    loadedUserActivities,
+    fetchUserActivitiesByUsername,
+    loadingUserActivities,
     userProfile?.username,
   ]);
 
@@ -395,6 +403,7 @@ const DashboardController: React.FC = () => {
     viewingActivityId,
     handleCloseActivityDetail,
     loadingReplyThreads,
+    userActivitiesByUsername,
   });
 
   return (

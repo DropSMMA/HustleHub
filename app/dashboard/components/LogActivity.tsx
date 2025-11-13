@@ -308,8 +308,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
       timeoutId = window.setTimeout(() => {
         resetState();
       }, 300);
-    } else if (textareaRef.current) {
-      textareaRef.current.focus();
     }
 
     return () => {
@@ -464,11 +462,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
       <div
         className={`bg-brand-secondary rounded-t-2xl w-full max-w-lg transform transition-transform duration-300 ease-out shadow-lg shadow-brand-neon/5 ${
           isOpen ? "translate-y-0" : "translate-y-full"
-        } max-h-[calc(100dvh-48px)] overflow-y-auto pb-[env(safe-area-inset-bottom)]`}
+        }`}
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: "calc(100dvh - 48px)" }}
       >
-        <div className="p-4 pb-6">
+        <div className="p-4">
           <div className="flex items-center justify-between pb-3">
             <button
               onClick={onClose}
@@ -484,7 +481,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
               disabled={
                 !description.trim() || (!type && !isReplyMode) || isSubmitting
               }
-              className="bg-brand-neon text-brand-primary font-bold py-2 px-5 rounded-lg transition-all duration-200 disabled:bg-brand-tertiary disabled:text-gray-500 disabled:cursor-not-allowed hover:bg-green-400 shadow-md shadow-brand-neon/20"
+              className="bg-brand-neon text-brand-primary font-bold py-2 px-5 rounded-lg transition-all duration-200 disabled:bg-brand-tertiary disabled:text-gray-500 disabled:cursor-not-allowed hover:bg-green-400"
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-primary"></div>
@@ -641,7 +638,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   value={stats}
                   onChange={(e) => setStats(e.target.value)}
                   placeholder="Stats (e.g., 5km)"
-                  className="bg-transparent text-sm text-brand-text-primary placeholder-brand-text-secondary/70 focus:outline-none w-32 border-b border-transparent focus:border-brand-neon transition-colors"
+                  className="bg-transparent text-sm text-brand-text-primary placeholder-brand-text-secondary/70 focus:outline-none w-32 border-b border-transparent"
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ import { toast } from "react-hot-toast";
 import { Activity, ActivityType, UserProfile } from "@/app/types";
 import apiClient from "@/libs/api";
 import { mapPostToActivity, PostDTO } from "@/libs/posts";
+import { optimizeImageFile } from "@/app/dashboard/lib/image-optimizer";
 import { TagIcon } from "./icons/TagIcon";
 import { ChartIcon } from "./icons/ChartIcon";
 import { ImageIcon } from "./icons/ImageIcon";
@@ -110,17 +111,21 @@ const LogActivity: React.FC<LogActivityProps> = ({
       let imageUrl: string | undefined;
 
       if (imageFile) {
+        const optimizedImage = await optimizeImageFile(imageFile, {
+          preset: "post",
+        });
+
         const { uploadUrl, fileUrl } = (await apiClient.post("/uploads", {
-          fileName: imageFile.name,
-          fileType: imageFile.type,
+          fileName: optimizedImage.name,
+          fileType: optimizedImage.type,
         })) as { uploadUrl: string; fileUrl: string };
 
         const uploadResponse = await fetch(uploadUrl, {
           method: "PUT",
           headers: {
-            "Content-Type": imageFile.type,
+            "Content-Type": optimizedImage.type,
           },
-          body: imageFile,
+          body: optimizedImage,
         });
 
         if (!uploadResponse.ok) {

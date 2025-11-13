@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import type { UserProfile } from "@/app/types";
 import apiClient from "@/libs/api";
 import { CameraIcon } from "../icons/CameraIcon";
+import { optimizeImageFile } from "@/app/dashboard/lib/image-optimizer";
 
 interface Step2Props {
     onNext: (data: Omit<UserProfile, 'focuses'>) => void;
@@ -81,17 +82,21 @@ const OnboardingStep2: React.FC<Step2Props> = ({
       }
 
       if (fileToUpload) {
+        const optimizedFile = await optimizeImageFile(fileToUpload, {
+          preset: "avatar",
+        });
+
         const { uploadUrl, fileUrl } = (await apiClient.post("/uploads", {
-          fileName: fileToUpload.name,
-          fileType: fileToUpload.type,
+          fileName: optimizedFile.name,
+          fileType: optimizedFile.type,
         })) as { uploadUrl: string; fileUrl: string };
 
         const uploadResponse = await fetch(uploadUrl, {
           method: "PUT",
           headers: {
-            "Content-Type": fileToUpload.type,
+            "Content-Type": optimizedFile.type,
           },
-          body: fileToUpload,
+          body: optimizedFile,
         });
 
         if (!uploadResponse.ok) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, ChangeEvent, useRef, useMemo } from "react"
 import { toast } from "react-hot-toast";
 import { UserProfile, FocusArea, Activity, View } from "@/app/types";
 import apiClient from "@/libs/api";
+import { optimizeImageFile } from "@/app/dashboard/lib/image-optimizer";
 import { PenIcon } from "./icons/PenIcon";
 import { CameraIcon } from "./icons/CameraIcon";
 import ActivityCard from "./ActivityCard";
@@ -244,17 +245,21 @@ const Profile: React.FC<ProfileProps> = ({
       }
 
       if (fileToUpload) {
+        const optimizedFile = await optimizeImageFile(fileToUpload, {
+          preset: "avatar",
+        });
+
         const { uploadUrl, fileUrl } = (await apiClient.post("/uploads", {
-          fileName: fileToUpload.name,
-          fileType: fileToUpload.type,
+          fileName: optimizedFile.name,
+          fileType: optimizedFile.type,
         })) as { uploadUrl: string; fileUrl: string };
 
         const uploadResponse = await fetch(uploadUrl, {
           method: "PUT",
           headers: {
-            "Content-Type": fileToUpload.type,
+            "Content-Type": optimizedFile.type,
           },
-          body: fileToUpload,
+          body: optimizedFile,
         });
 
         if (uploadResponse.ok) {

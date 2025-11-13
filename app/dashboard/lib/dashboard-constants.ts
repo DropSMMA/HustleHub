@@ -12,7 +12,7 @@ export const USER_PROFILE_OWNER_STORAGE_KEY = "hustlehub:userProfileOwner";
 
 export const DEFAULT_AVATAR =
   "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
-export const DEFAULT_POST_LIMIT = 20;
+export const DEFAULT_POST_LIMIT = 40;
 
 export const createWelcomeActivity = (profile: UserProfile): Activity => ({
   id: `${Date.now() + 1}`,

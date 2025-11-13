@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import {
@@ -128,6 +128,28 @@ const DashboardController: React.FC = () => {
     userProfile,
     setConnectionDirectory,
   });
+
+  const allKnownUsers = useMemo(() => {
+    const directory: Record<string, UserProfile> = {};
+
+    Object.values(MOCK_USER_PROFILES).forEach((profile) => {
+      directory[profile.username.toLowerCase()] = profile;
+    });
+
+    Object.values(connectionDirectory).forEach((profile) => {
+      directory[profile.username.toLowerCase()] = profile;
+    });
+
+    if (userProfile) {
+      directory[userProfile.username.toLowerCase()] = userProfile;
+    }
+
+    researchUsers.forEach((profile) => {
+      directory[profile.username.toLowerCase()] = profile;
+    });
+
+    return directory;
+  }, [connectionDirectory, researchUsers, userProfile]);
 
   const {
     handleCompleteOnboarding,
@@ -358,6 +380,7 @@ const DashboardController: React.FC = () => {
     highlightedPostId: highlightedPostId,
     onClearHighlight: handleClearHighlightedPost,
     onViewActivityDetail: handleViewActivityDetail,
+    allUsers: allKnownUsers,
   };
 
   const viewContent = renderDashboardView({
@@ -404,6 +427,7 @@ const DashboardController: React.FC = () => {
     handleCloseActivityDetail,
     loadingReplyThreads,
     userActivitiesByUsername,
+    allUsers: allKnownUsers,
   });
 
   return (
@@ -428,6 +452,7 @@ const DashboardController: React.FC = () => {
         onClose={handleCloseLogModal}
         onPostCreated={handleLogActivity}
         userProfile={userProfile}
+        allUsers={allKnownUsers}
         replyingToActivity={replyingToActivity}
       />
     </div>

@@ -32,6 +32,7 @@ interface CommonFeedProps {
     activityId: string,
     options?: { commentId?: string }
   ) => void;
+  allUsers?: Record<string, UserProfile>;
 }
 
 export interface DashboardRenderParams {
@@ -84,6 +85,7 @@ export interface DashboardRenderParams {
   handleCloseActivityDetail: () => void;
   loadingReplyThreads: Record<string, boolean>;
   userActivitiesByUsername: Record<string, Activity[]>;
+  allUsers?: Record<string, UserProfile>;
 }
 
 const renderDashboardView = ({
@@ -130,6 +132,7 @@ const renderDashboardView = ({
   handleCloseActivityDetail,
   loadingReplyThreads,
   userActivitiesByUsername,
+  allUsers,
 }: DashboardRenderParams): React.ReactNode => {
   switch (currentView) {
     case "feed":
@@ -139,6 +142,7 @@ const renderDashboardView = ({
           onRefresh={onRefresh}
           onLoadMore={onLoadMore}
           isLoadingMore={isLoadingMore}
+          allUsers={allUsers}
         />
       );
     case "activityDetail": {
@@ -178,6 +182,7 @@ const renderDashboardView = ({
           isThreadLoading={Boolean(
             loadingReplyThreads[viewingActivityId] ?? false
           )}
+          allUsers={allUsers}
         />
       );
     }
@@ -241,8 +246,7 @@ const renderDashboardView = ({
 
       {
         const username = userProfile.username;
-        const cachedActivities =
-          userActivitiesByUsername[username] ?? null;
+        const cachedActivities = userActivitiesByUsername[username] ?? null;
         const profileActivities =
           cachedActivities ??
           activities.filter((activity) => activity.username === username);
@@ -260,6 +264,7 @@ const renderDashboardView = ({
             setCurrentView={setCurrentView}
             onViewActivityDetail={handleViewActivityDetail}
             allActivities={cachedActivities ?? activities}
+            allUsers={allUsers}
           />
         );
       }
@@ -286,8 +291,7 @@ const renderDashboardView = ({
       }
       if (viewingProfile) {
         const username = viewingProfile.username;
-        const cachedActivities =
-          userActivitiesByUsername[username] ?? null;
+        const cachedActivities = userActivitiesByUsername[username] ?? null;
         const publicProfileActivities =
           cachedActivities ??
           activities.filter(
@@ -309,6 +313,7 @@ const renderDashboardView = ({
             onViewProfile={handleViewProfile}
             onViewActivityDetail={handleViewActivityDetail}
             allActivities={cachedActivities ?? activities}
+            allUsers={allUsers}
           />
         );
       }

@@ -42,6 +42,7 @@ interface ProfileProps {
   setCurrentView: (view: View) => void;
   onViewActivityDetail?: (activityId: string) => void;
   allActivities?: Activity[];
+  allUsers?: Record<string, UserProfile>;
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({
@@ -105,6 +106,7 @@ const Profile: React.FC<ProfileProps> = ({
   setCurrentView,
   onViewActivityDetail,
   allActivities,
+  allUsers,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(
@@ -686,6 +688,7 @@ const Profile: React.FC<ProfileProps> = ({
                 replyCount={
                   activity.replyCount ?? replyCounts.get(activity.id) ?? 0
                 }
+                allUsers={allUsers}
               />
             ))}
           </div>

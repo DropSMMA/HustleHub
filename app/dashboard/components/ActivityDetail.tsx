@@ -22,6 +22,7 @@ interface ActivityDetailProps {
   highlightedReplyId?: string | null;
   onViewActivityDetail: (activityId: string) => void;
   isThreadLoading?: boolean;
+  allUsers?: Record<string, UserProfile>;
 }
 
 const ActivityDetail: React.FC<ActivityDetailProps> = ({
@@ -37,6 +38,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   highlightedReplyId,
   onViewActivityDetail,
   isThreadLoading = false,
+  allUsers,
 }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
@@ -149,7 +151,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     if (activity.image) {
       setIsImageModalOpen(true);
       if (onOpenImage) {
-      onOpenImage(activity.image);
+        onOpenImage(activity.image);
       }
     }
   };
@@ -316,13 +318,12 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
                 onViewProfile={onViewProfile}
                 onToggleLike={onToggleLike}
                 onDelete={onDeleteActivity}
-                    currentUser={currentUser}
+                currentUser={currentUser}
                 onClick={() => onViewActivityDetail(reply.id)}
-                replyCount={
-                  reply.replyCount ?? replyCounts.get(reply.id) ?? 0
-                }
+                replyCount={reply.replyCount ?? replyCounts.get(reply.id) ?? 0}
                 isHighlighted={reply.id === highlightedReplyId}
-                  />
+                allUsers={allUsers}
+              />
             ))}
           </div>
         ) : !isThreadLoading ? (

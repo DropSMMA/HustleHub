@@ -22,6 +22,7 @@ interface PublicProfileProps {
   onViewProfile: (username: string) => Promise<void> | void;
   onViewActivityDetail?: (activityId: string) => void;
   allActivities?: Activity[];
+  allUsers?: Record<string, UserProfile>;
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({
@@ -48,6 +49,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
   onViewProfile,
   onViewActivityDetail,
   allActivities,
+  allUsers,
 }) => {
   if (!user) {
     return (
@@ -261,6 +263,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
                   derivedReplyCounts.get(activity.id) ??
                   0
                 }
+                allUsers={allUsers}
               />
             ))}
           </div>

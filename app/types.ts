@@ -14,6 +14,17 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export type MentionType = "connection" | "startup";
+
+export interface ActivityMention {
+  id: string;
+  type: MentionType;
+  handle: string;
+  label: string;
+  username?: string;
+  url?: string;
+}
+
 export interface Activity {
   id: string;
   user: string;
@@ -34,6 +45,7 @@ export interface Activity {
     name?: string | null;
   };
   replyCount?: number;
+  mentions?: ActivityMention[];
 }
 
 export interface Challenge {

@@ -12,6 +12,7 @@ interface ActivityModalProps {
     onToggleLike: (activityId: string) => Promise<void> | void;
     onDeleteActivity: (activityId: string) => void;
     replyCount?: number;
+    allUsers?: Record<string, UserProfile>;
 }
 
 const ActivityModal: React.FC<ActivityModalProps> = ({
@@ -23,6 +24,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
     onToggleLike,
     onDeleteActivity,
     replyCount = 0,
+    allUsers,
 }) => {
     const resolvedReplyCount = activity.replyCount ?? replyCount ?? 0;
     return (
@@ -48,6 +50,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
                         onDelete={onDeleteActivity}
                         currentUser={currentUser}
                         replyCount={resolvedReplyCount}
+                        allUsers={allUsers}
                     />
                 </div>
             </div>

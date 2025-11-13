@@ -112,6 +112,7 @@ export interface UserProfile {
 
 export enum NotificationType {
   Comment = "comment",
+  Mention = "mention",
   Kudo = "kudo",
   Challenge = "challenge",
   System = "system",
@@ -125,6 +126,7 @@ export interface Notification {
   timestamp: string;
   read: boolean;
   postId?: string;
+  metadata?: Record<string, unknown>;
   actor: {
     name: string;
     avatar: string;

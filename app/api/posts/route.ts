@@ -7,7 +7,11 @@ import User from "@/models/User";
 import Post from "@/models/Post";
 import type { IPost } from "@/models/Post";
 import Notification from "@/models/Notification";
-import { ActivityType, NotificationType } from "@/app/types";
+import {
+  ActivityType,
+  NotificationType,
+  type MentionType,
+} from "@/app/types";
 import { serializePosts, toStringId, type OwnerInfo } from "./utils";
 
 const isValidImage = (value: string) => /^https?:\/\//.test(value);
@@ -17,6 +21,38 @@ const DEFAULT_AVATAR =
 const replyingToInputSchema = z.object({
   activityId: z.string().trim(),
 });
+
+const mentionSchema = z
+  .object({
+    id: z.string().trim().min(1).max(120),
+    type: z.enum(["connection", "startup"]),
+    handle: z.string().trim().min(1).max(120),
+    label: z.string().trim().min(1).max(180),
+    username: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .transform((value) => value.toLowerCase())
+      .optional(),
+    url: z
+      .string()
+      .trim()
+      .refine(
+        (value) => !value || /^https?:\/\//i.test(value),
+        "URL must start with http or https"
+      )
+      .optional(),
+  })
+  .superRefine((mention, ctx) => {
+    if (mention.type === "connection" && !mention.username) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Connection mentions must include a username.",
+        path: ["username"],
+      });
+    }
+  });
 
 const createPostSchema = z
   .object({
@@ -31,6 +67,7 @@ const createPostSchema = z
       })
       .optional(),
     replyingTo: replyingToInputSchema.optional(),
+    mentions: z.array(mentionSchema).max(25).optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.replyingTo && !data.type) {
@@ -41,6 +78,9 @@ const createPostSchema = z
       });
     }
   });
+
+type MentionInput = z.infer<typeof mentionSchema>;
+type CreatePostInput = z.infer<typeof createPostSchema>;
 
 type PostDoc = mongoose.HydratedDocument<IPost>;
 
@@ -193,7 +233,7 @@ export async function POST(request: Request) {
     }
 
     const raw = await request.json();
-    const payload = createPostSchema.parse(raw);
+    const payload: CreatePostInput = createPostSchema.parse(raw);
 
     await connectMongo();
 
@@ -251,6 +291,33 @@ export async function POST(request: Request) {
       };
     }
 
+    const sanitizedMentions =
+      payload.mentions?.map((mention: MentionInput) => {
+        const sanitized: {
+          id: string;
+          type: MentionType;
+          handle: string;
+          label: string;
+          username?: string;
+          url?: string;
+        } = {
+          id: mention.id.trim(),
+          type: mention.type as MentionType,
+          handle: mention.handle.trim(),
+          label: mention.label.trim(),
+        };
+
+        if (mention.username) {
+          sanitized.username = mention.username.trim().toLowerCase();
+        }
+
+        if (mention.url) {
+          sanitized.url = mention.url.trim();
+        }
+
+        return sanitized;
+      }) ?? [];
+
     const resolvedType = payload.type ?? undefined;
 
     if (!resolvedType && !replyingToSnapshot) {
@@ -259,6 +326,27 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const actorUsername =
+      typeof user.username === "string" && user.username.length > 0
+        ? user.username
+        : typeof session.user?.email === "string"
+        ? session.user.email.split("@")[0] ?? user._id.toString()
+        : user._id.toString();
+    const actorName =
+      typeof user.name === "string" && user.name.length > 0
+        ? user.name
+        : typeof session.user?.name === "string"
+        ? session.user.name
+        : actorUsername;
+    const actorAvatar =
+      typeof user.image === "string" && user.image.length > 0
+        ? user.image
+        : typeof session.user?.image === "string" &&
+          session.user.image.length > 0
+        ? session.user.image
+        : DEFAULT_AVATAR;
+
     const post = await Post.create({
       userId: user._id,
       username: user.username,
@@ -272,6 +360,7 @@ export async function POST(request: Request) {
       likedBy: [],
       comments: [],
       replyingTo: replyingToSnapshot,
+      mentions: sanitizedMentions,
     });
 
     if (replyingToSnapshot && parentPost) {
@@ -284,26 +373,6 @@ export async function POST(request: Request) {
       );
 
       if (!isSelfReply) {
-        const actorUsername =
-          typeof user.username === "string" && user.username.length > 0
-            ? user.username
-            : typeof session.user?.email === "string"
-            ? session.user.email.split("@")[0] ?? user._id.toString()
-            : user._id.toString();
-        const actorName =
-          typeof user.name === "string" && user.name.length > 0
-            ? user.name
-            : typeof session.user?.name === "string"
-            ? session.user.name
-            : actorUsername;
-        const actorAvatar =
-          typeof user.image === "string" && user.image.length > 0
-            ? user.image
-            : typeof session.user?.image === "string" &&
-              session.user.image.length > 0
-            ? session.user.image
-            : DEFAULT_AVATAR;
-
         const message = parentPost.replyingTo
           ? "replied to your reply."
           : "replied to your post.";
@@ -326,6 +395,95 @@ export async function POST(request: Request) {
         } catch (notificationError) {
           console.error("[posts][POST][notification]", notificationError);
         }
+      }
+    }
+
+    if (sanitizedMentions.length > 0) {
+      const mentionTargets = new Map<
+        string,
+        {
+          id: string;
+          type: MentionType;
+          handle: string;
+          label: string;
+          username?: string;
+          url?: string;
+        }
+      >();
+
+      sanitizedMentions.forEach((mention) => {
+        if (mention.type !== "connection") {
+          return;
+        }
+
+        const usernameKey = (mention.username ?? mention.handle)
+          .trim()
+          .toLowerCase();
+
+        if (!usernameKey || usernameKey === actorUsername.toLowerCase()) {
+          return;
+        }
+
+        if (!mentionTargets.has(usernameKey)) {
+          mentionTargets.set(usernameKey, mention);
+        }
+      });
+
+      if (mentionTargets.size > 0) {
+        const mentionedUsers = await User.find({
+          username: { $in: Array.from(mentionTargets.keys()) },
+        })
+          .select("_id username name image")
+          .lean();
+
+        await Promise.all(
+          mentionedUsers.map(async (mentionedUser) => {
+            if (!mentionedUser?._id) {
+              return;
+            }
+
+            if (
+              mentionedUser._id instanceof mongoose.Types.ObjectId &&
+              mentionedUser._id.equals(user._id as mongoose.Types.ObjectId)
+            ) {
+              return;
+            }
+
+            const normalizedUsername =
+              typeof mentionedUser.username === "string"
+                ? mentionedUser.username
+                : "";
+            const mentionDetails =
+              mentionTargets.get(normalizedUsername.toLowerCase()) ?? null;
+
+            try {
+              await Notification.create({
+                recipient: mentionedUser._id as mongoose.Types.ObjectId,
+                actorId: user._id as mongoose.Types.ObjectId,
+                actorUsername,
+                actorName,
+                actorAvatar,
+                type: NotificationType.Mention,
+                message: replyingToSnapshot
+                  ? "mentioned you in a reply."
+                  : "mentioned you in a hustle.",
+                read: false,
+                postId: post._id,
+                metadata: mentionDetails
+                  ? {
+                      mentionId: mentionDetails.id,
+                      mentionHandle: mentionDetails.handle,
+                    }
+                  : undefined,
+              });
+            } catch (notificationError) {
+              console.error(
+                "[posts][POST][mention-notification]",
+                notificationError
+              );
+            }
+          })
+        );
       }
     }
 

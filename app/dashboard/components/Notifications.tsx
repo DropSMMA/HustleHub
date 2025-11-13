@@ -73,6 +73,8 @@ const NotificationIcon: React.FC<{ type: NotificationType }> = ({ type }) => {
   switch (type) {
     case NotificationType.Comment:
       return <CommentIcon />;
+    case NotificationType.Mention:
+      return <CommentIcon />;
     case NotificationType.Kudo:
       return <ThumbsUpIcon />;
     case NotificationType.Challenge:

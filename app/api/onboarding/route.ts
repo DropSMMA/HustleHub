@@ -3,6 +3,10 @@ import { z } from "zod";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import { FocusArea } from "@/app/types";
+import {
+  normalizeProjectLinks,
+  sanitizeProjectLinksForPersistence,
+} from "@/libs/projects";
 
 const socialsSchema = z
   .object({
@@ -17,6 +21,16 @@ const socialsSchema = z
 const isValidAvatar = (value: string) =>
   value.startsWith("data:") || /^https?:\/\//.test(value);
 
+const projectSchema = z.object({
+  name: z.string().trim().min(1, "Project name is required.").max(120),
+  url: z
+    .string()
+    .trim()
+    .max(255, "Project link is too long.")
+    .url("Project link must be a valid URL.")
+    .optional(),
+});
+
 const onboardingSchema = z.object({
   email: z.string().trim().email(),
   name: z.string().trim().min(1, "Name is required."),
@@ -29,7 +43,7 @@ const onboardingSchema = z.object({
     })
     .optional(),
   tagline: z.string().trim().max(200).optional(),
-  projects: z.array(z.string().trim().max(120)).optional(),
+  projects: z.array(projectSchema).optional(),
   focuses: z
     .array(z.nativeEnum(FocusArea))
     .min(1, "Select at least one focus area.")
@@ -52,7 +66,9 @@ export async function POST(request: Request) {
     await connectMongo();
 
     const baseUsername = sanitizeUsername(payload.username);
-    const projects = payload.projects?.filter(Boolean) ?? [];
+    const projects = sanitizeProjectLinksForPersistence(
+      payload.projects ?? []
+    );
     const socials = payload.socials ?? {};
 
     const existingUserByEmail = await User.findOne({ email: payload.email });
@@ -97,8 +113,15 @@ export async function POST(request: Request) {
       });
     }
 
+    const json = userDoc.toJSON();
     return NextResponse.json(
-      { user: userDoc.toJSON(), status: existingUserByEmail ? "updated" : "created" },
+      {
+        user: {
+          ...json,
+          projects: normalizeProjectLinks(json.projects),
+        },
+        status: existingUserByEmail ? "updated" : "created",
+      },
       { status: existingUserByEmail ? 200 : 201 }
     );
   } catch (error) {

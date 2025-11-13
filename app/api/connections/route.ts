@@ -4,6 +4,10 @@ import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import { FocusArea } from "@/app/types";
+import {
+  normalizeProjectLinks,
+  projectLinksToDisplayString,
+} from "@/libs/projects";
 
 const DEFAULT_AVATAR =
   "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
@@ -30,11 +34,7 @@ const mapUserToPreview = (user: any) => ({
   avatar: user.image ?? DEFAULT_AVATAR,
   tagline: user.tagline ?? "",
   focuses: Array.isArray(user.focuses) ? (user.focuses as FocusArea[]) : [],
-  projects: Array.isArray(user.projects)
-    ? user.projects.filter(Boolean).join(", ")
-    : typeof user.projects === "string"
-    ? user.projects
-    : "",
+  projects: projectLinksToDisplayString(normalizeProjectLinks(user.projects)),
 });
 
 const sanitizeUsernames = (values: unknown): string[] =>

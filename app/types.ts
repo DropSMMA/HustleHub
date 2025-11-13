@@ -75,12 +75,17 @@ export enum FocusArea {
   Networking = "🌍 Networking / Community",
 }
 
+export interface ProjectLink {
+  name: string;
+  url?: string;
+}
+
 export interface UserProfile {
   username: string;
   name: string;
   avatar: string;
   tagline: string;
-  projects: string;
+  projects: ProjectLink[];
   focuses: FocusArea[];
   connections: string[];
   socials?: {

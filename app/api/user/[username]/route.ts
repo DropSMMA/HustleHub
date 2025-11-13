@@ -7,6 +7,7 @@ import User from "@/models/User";
 import Post from "@/models/Post";
 import type { IPost } from "@/models/Post";
 import { serializePosts, type OwnerInfo } from "../../posts/utils";
+import { normalizeProjectLinks } from "@/libs/projects";
 
 const paramsSchema = z.object({
   username: z
@@ -77,9 +78,7 @@ export async function GET(request: Request, context: any) {
       name: userDoc.name ?? "",
       avatar: userDoc.image ?? DEFAULT_AVATAR,
       tagline: userDoc.tagline ?? "",
-      projects: Array.isArray(userDoc.projects)
-        ? userDoc.projects.filter(Boolean).join(", ")
-        : userDoc.projects ?? "",
+      projects: normalizeProjectLinks(userDoc.projects),
       focuses: Array.isArray(userDoc.focuses) ? userDoc.focuses : [],
       connections: sanitizeUsernames(userDoc.connections),
       socials:

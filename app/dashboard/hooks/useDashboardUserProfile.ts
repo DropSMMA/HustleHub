@@ -10,6 +10,7 @@ import {
   createWelcomeActivity,
 } from "../lib/dashboard-constants";
 import { PostDTO, mapPostsToActivities } from "../lib/normalizers";
+import { normalizeProjectLinks } from "@/libs/projects";
 
 interface UseDashboardUserProfileParams {
   sessionStatus: "authenticated" | "loading" | "unauthenticated";
@@ -274,7 +275,7 @@ const useDashboardUserProfile = ({
             name: data.user.name?.trim() ?? "",
             avatar: data.user.avatar ?? DEFAULT_AVATAR,
             tagline: data.user.tagline?.trim() ?? "",
-            projects: data.user.projects?.trim() ?? "",
+            projects: normalizeProjectLinks(data.user.projects),
             focuses,
             connections,
             socials:
@@ -480,9 +481,7 @@ const useDashboardUserProfile = ({
             user.image ??
             "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
           tagline: user.tagline ?? "",
-          projects: Array.isArray(user.projects)
-            ? user.projects.join(", ")
-            : user.projects ?? "",
+          projects: normalizeProjectLinks(user.projects),
           focuses: user.focuses,
           connections: Array.isArray(user.connections)
             ? user.connections

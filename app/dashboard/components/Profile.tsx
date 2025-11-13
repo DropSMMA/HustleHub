@@ -589,7 +589,9 @@ const Profile: React.FC<ProfileProps> = ({
                     ? () => onViewActivityDetail(activity.id)
                     : undefined
                 }
-                replyCount={replyCounts.get(activity.id) ?? 0}
+                replyCount={
+                  activity.replyCount ?? replyCounts.get(activity.id) ?? 0
+                }
               />
             ))}
           </div>

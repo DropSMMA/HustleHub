@@ -61,7 +61,7 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
     const isPending = pendingConnections.includes(user.username);
     const isSelf = currentUser?.username === user.username;
 
-    const replyCounts = useMemo(() => {
+    const derivedReplyCounts = useMemo(() => {
         const counts = new Map<string, number>();
         const source = allActivities ?? activities;
         source.forEach((activity) => {
@@ -175,7 +175,11 @@ const PublicProfile: React.FC<PublicProfileProps> = ({
                                     ? () => onViewActivityDetail(activity.id)
                                     : undefined
                             }
-                                replyCount={replyCounts.get(activity.id) ?? 0}
+                                replyCount={
+                                    activity.replyCount ??
+                                    derivedReplyCounts.get(activity.id) ??
+                                    0
+                                }
                             />
                         ))}
                     </div>

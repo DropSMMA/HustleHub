@@ -21,6 +21,7 @@ interface ActivityDetailProps {
   onOpenImage?: (url: string) => void;
   highlightedReplyId?: string | null;
   onViewActivityDetail: (activityId: string) => void;
+  isThreadLoading?: boolean;
 }
 
 const ActivityDetail: React.FC<ActivityDetailProps> = ({
@@ -35,6 +36,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   onOpenImage,
   highlightedReplyId,
   onViewActivityDetail,
+  isThreadLoading = false,
 }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
@@ -91,7 +93,8 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   }, [highlightedReplyId, replies]);
 
   const isOwner = currentUser?.username === activity.username;
-  const replyCount = replyCounts.get(activity.id) ?? 0;
+  const replyCount =
+    activity.replyCount ?? replyCounts.get(activity.id) ?? replies.length ?? 0;
 
   const handleLike = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -293,10 +296,15 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
       </div>
 
       <div ref={replySectionRef} className="space-y-4">
-        {replies.length > 0 && (
+        {(replies.length > 0 || isThreadLoading) && (
           <h3 className="font-bold text-lg text-brand-text-primary pt-2">
             Replies
           </h3>
+        )}
+        {isThreadLoading && (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-neon"></div>
+          </div>
         )}
         {replies.length > 0 ? (
           <div className="space-y-4">
@@ -310,16 +318,18 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
                 onDelete={onDeleteActivity}
                     currentUser={currentUser}
                 onClick={() => onViewActivityDetail(reply.id)}
-                replyCount={replyCounts.get(reply.id) ?? 0}
+                replyCount={
+                  reply.replyCount ?? replyCounts.get(reply.id) ?? 0
+                }
                 isHighlighted={reply.id === highlightedReplyId}
                   />
             ))}
           </div>
-        ) : (
+        ) : !isThreadLoading ? (
           <p className="text-sm text-brand-text-secondary text-center py-6">
             No replies yet. Join the conversation!
           </p>
-        )}
+        ) : null}
       </div>
 
       <ConfirmationModal

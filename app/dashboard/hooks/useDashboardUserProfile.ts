@@ -28,6 +28,10 @@ interface UseDashboardUserProfileParams {
   fetchPosts: (options?: {
     cursor?: string | null;
     replace?: boolean;
+    categoryOnly?: boolean;
+    username?: string;
+    replyingTo?: string;
+    limit?: number;
   }) => Promise<Activity[]>;
   refreshConnections: () => Promise<void>;
   setPendingConnections: React.Dispatch<React.SetStateAction<string[]>>;
@@ -202,16 +206,16 @@ const useDashboardUserProfile = ({
       setCurrentView("publicProfile");
 
       try {
-        const response = await fetch(
-          `/api/user/${encodeURIComponent(normalizedUsername)}`,
-          {
+        const encodedUsername = encodeURIComponent(normalizedUsername);
+        const baseProfileUrl = `/api/user/${encodedUsername}?limit=50&categoryOnly=false`;
+
+        const response = await fetch(baseProfileUrl, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
             },
             cache: "no-store",
-          }
-        );
+        });
 
         if (response.ok) {
           const data = (await response.json()) as {
@@ -229,6 +233,7 @@ const useDashboardUserProfile = ({
             relationship?: {
               status?: "self" | "connected" | "incoming" | "outgoing" | "none";
             };
+            nextCursor?: string | null;
           };
 
           const focuses = Array.isArray(data.user.focuses)
@@ -297,11 +302,65 @@ const useDashboardUserProfile = ({
             );
           }
 
-          const posts = Array.isArray(data.posts) ? data.posts : [];
-          const mappedActivities = mapPostsToActivities(posts);
+          const aggregatedPosts: PostDTO[] = Array.isArray(data.posts)
+            ? [...data.posts]
+            : [];
+
+          const fetchAdditionalPosts = async (cursor: string | null) => {
+            let nextCursor = cursor;
+
+            while (nextCursor) {
+              const params = new URLSearchParams({
+                username: normalizedUsername,
+                categoryOnly: "false",
+                limit: "50",
+              });
+
+              params.set("cursor", nextCursor);
+
+              const postsResponse = await fetch(
+                `/api/posts?${params.toString()}`,
+                {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  cache: "no-store",
+                }
+              );
+
+              if (!postsResponse.ok) {
+                break;
+              }
+
+              const postsPayload = (await postsResponse.json()) as {
+                posts: PostDTO[];
+                nextCursor: string | null;
+              };
+
+              if (Array.isArray(postsPayload.posts)) {
+                aggregatedPosts.push(...postsPayload.posts);
+              }
+
+              if (!postsPayload.nextCursor || postsPayload.nextCursor === nextCursor) {
+                nextCursor = null;
+              } else {
+                nextCursor = postsPayload.nextCursor;
+              }
+            }
+          };
+
+          await fetchAdditionalPosts(data.nextCursor ?? null);
+
+          const mappedActivities = mapPostsToActivities(aggregatedPosts);
+          const normalizedActivities = mappedActivities.map((activity) => ({
+            ...activity,
+            createdAtIso:
+              activity.createdAtIso ?? new Date().toISOString(),
+          }));
 
           setActivities((prev) => {
-            if (mappedActivities.length === 0) {
+            if (normalizedActivities.length === 0) {
               return prev;
             }
 
@@ -311,7 +370,7 @@ const useDashboardUserProfile = ({
             let hasChanges = false;
             const updated = [...prev];
 
-            mappedActivities.forEach((activity) => {
+            normalizedActivities.forEach((activity) => {
               const existingIndex = indexMap.get(activity.id);
               if (existingIndex !== undefined) {
                 const existing = updated[existingIndex];

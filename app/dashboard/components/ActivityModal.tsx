@@ -24,6 +24,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
     onDeleteActivity,
     replyCount = 0,
 }) => {
+    const resolvedReplyCount = activity.replyCount ?? replyCount ?? 0;
     return (
         <div 
             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in"
@@ -46,7 +47,7 @@ const ActivityModal: React.FC<ActivityModalProps> = ({
                         onToggleLike={onToggleLike}
                         onDelete={onDeleteActivity}
                         currentUser={currentUser}
-                        replyCount={replyCount}
+                        replyCount={resolvedReplyCount}
                     />
                 </div>
             </div>

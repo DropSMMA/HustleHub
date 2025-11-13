@@ -28,11 +28,13 @@ export interface Activity {
   likedBy?: string[];
   comments?: Comment[];
   timestamp: string;
+  createdAtIso?: string;
   replyingTo?: {
     activityId: string;
     username: string;
     name?: string | null;
   };
+  replyCount?: number;
 }
 
 export interface Challenge {

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post from "@/models/Post";
+import type { IPost } from "@/models/Post";
 import { serializePosts, type OwnerInfo } from "../../posts/utils";
 
 const paramsSchema = z.object({
@@ -33,6 +35,7 @@ const sanitizeUsernames = (values: unknown): string[] =>
 
 export async function GET(request: Request, context: any) {
   try {
+    const { searchParams } = new URL(request.url);
     const usernameParam = context?.params?.username;
     const validation = paramsSchema.safeParse({ username: usernameParam });
 
@@ -43,6 +46,11 @@ export async function GET(request: Request, context: any) {
     }
 
     const username = validation.data.username.toLowerCase();
+
+    const cursor = searchParams.get("cursor");
+    const limitParam = searchParams.get("limit");
+    const categoryOnlyParam = searchParams.get("categoryOnly");
+    const limit = Math.min(Math.max(Number(limitParam) || 40, 1), 100);
 
     await connectMongo();
 
@@ -109,9 +117,78 @@ export async function GET(request: Request, context: any) {
       relationship = "outgoing";
     }
 
-    const posts = await Post.find({ username })
+    const filterConditions: mongoose.FilterQuery<IPost>[] = [{ username }];
+
+    if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+      filterConditions.push({
+        _id: { $lt: new mongoose.Types.ObjectId(cursor) },
+      });
+    }
+
+    const categoryOnly =
+      categoryOnlyParam === null
+        ? false
+        : categoryOnlyParam.toLowerCase() !== "false";
+
+    if (categoryOnly) {
+      filterConditions.push({
+        $or: [
+          { replyingTo: null },
+          {
+            replyingTo: { $ne: null },
+            type: { $exists: true, $ne: null },
+          },
+        ],
+      });
+    }
+
+    const postFilter =
+      filterConditions.length > 0 ? { $and: filterConditions } : {};
+
+    const posts = await Post.find(postFilter)
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(limit + 1);
+
+    let nextCursor: string | null = null;
+
+    if (posts.length > limit) {
+      const nextPost = posts.pop();
+      nextCursor = nextPost ? nextPost.id : null;
+    }
+
+    const countTargetIds = new Set<string>();
+    posts.forEach((post) => {
+      countTargetIds.add(post._id.toString());
+    });
+
+    const replyCounts =
+      countTargetIds.size > 0
+        ? await Post.aggregate<{
+            _id: mongoose.Types.ObjectId;
+            count: number;
+          }>([
+            {
+              $match: {
+                "replyingTo.postId": {
+                  $in: Array.from(countTargetIds).map(
+                    (id) => new mongoose.Types.ObjectId(id)
+                  ),
+                },
+              },
+            },
+            {
+              $group: {
+                _id: "$replyingTo.postId",
+                count: { $sum: 1 },
+              },
+            },
+          ])
+        : [];
+
+    const replyCountMap = new Map<string, number>();
+    replyCounts.forEach((entry) => {
+      replyCountMap.set(entry._id.toString(), entry.count);
+    });
 
     const ownerOverrides = new Map<string, OwnerInfo>();
     const userIdString = userDoc._id ? userDoc._id.toString() : null;
@@ -127,6 +204,7 @@ export async function GET(request: Request, context: any) {
     const serializedPosts = await serializePosts(posts, {
       currentUserId: viewerId,
       ownerOverrides: ownerOverrides.size > 0 ? ownerOverrides : undefined,
+      replyCounts: replyCountMap,
     });
 
     return NextResponse.json(
@@ -136,6 +214,7 @@ export async function GET(request: Request, context: any) {
         relationship: {
           status: relationship,
         },
+        nextCursor,
       },
       { status: 200 }
     );

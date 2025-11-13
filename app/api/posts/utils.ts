@@ -13,6 +13,7 @@ export type SerializedPost = Record<string, unknown>;
 type SerializeOptions = {
   currentUserId: string | null;
   ownerOverrides?: Map<string, OwnerInfo>;
+  replyCounts?: Map<string, number>;
 };
 
 export const toStringId = (value: unknown): string | undefined => {
@@ -42,7 +43,7 @@ const DEFAULT_AVATAR =
 
 export const serializePosts = async (
   posts: mongoose.HydratedDocument<IPost>[],
-  { currentUserId, ownerOverrides }: SerializeOptions
+  { currentUserId, ownerOverrides, replyCounts }: SerializeOptions
 ) => {
   if (posts.length === 0) {
     return [] as SerializedPost[];
@@ -141,6 +142,9 @@ export const serializePosts = async (
     const userId =
       toStringId(post.userId) ?? toStringId(posts[index].userId as unknown);
     const replyingTo = replyingToSnapshots[index];
+    const postIdString =
+      toStringId(posts[index]._id as unknown) ??
+      toStringId((post as { _id?: unknown })._id);
 
     const owner =
       (userId && ownerMap.get(userId)) ||
@@ -148,8 +152,7 @@ export const serializePosts = async (
         ? {
             name: (post.name as string | undefined) ?? "",
             username: (post.username as string | undefined) ?? "",
-            avatar:
-              (post.avatar as string | undefined) ?? DEFAULT_AVATAR,
+            avatar: (post.avatar as string | undefined) ?? DEFAULT_AVATAR,
           }
         : undefined);
 
@@ -163,6 +166,11 @@ export const serializePosts = async (
       likedBy,
       replyingTo,
       owner,
+      replyCount:
+        (postIdString && replyCounts?.get(postIdString)) ??
+        (typeof (post as { replyCount?: unknown }).replyCount === "number"
+          ? ((post as { replyCount: number }).replyCount as number)
+          : 0),
     } satisfies SerializedPost;
   });
 };

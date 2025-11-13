@@ -54,6 +54,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
     const cursor = searchParams.get("cursor");
+    const usernameParam = searchParams.get("username");
+    const replyingToParam = searchParams.get("replyingTo");
+    const categoryOnlyParam = searchParams.get("categoryOnly");
 
     const limit = Math.min(Math.max(Number(limitParam) || 20, 1), 50);
 
@@ -71,10 +74,49 @@ export async function GET(request: Request) {
 
     const currentUserId = currentUser?._id?.toString() ?? null;
 
+    const filterConditions: mongoose.FilterQuery<IPost>[] = [];
+
+    if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+      filterConditions.push({
+        _id: { $lt: new mongoose.Types.ObjectId(cursor) },
+      });
+    }
+
+    if (usernameParam) {
+      filterConditions.push({ username: usernameParam.toLowerCase() });
+    }
+
+    let replyingToId: mongoose.Types.ObjectId | null = null;
+    if (replyingToParam) {
+      if (!mongoose.Types.ObjectId.isValid(replyingToParam)) {
+        return NextResponse.json(
+          { message: "Invalid parent activity identifier." },
+          { status: 400 }
+        );
+      }
+      replyingToId = new mongoose.Types.ObjectId(replyingToParam);
+      filterConditions.push({ "replyingTo.postId": replyingToId });
+    } else {
+      const categoryOnly =
+        categoryOnlyParam === null
+          ? false
+          : categoryOnlyParam.toLowerCase() !== "false";
+
+      if (categoryOnly) {
+        filterConditions.push({
+          $or: [
+            { replyingTo: null },
+            {
+              replyingTo: { $ne: null },
+              type: { $exists: true, $ne: null },
+            },
+          ],
+        });
+      }
+    }
+
     const filter =
-      cursor && mongoose.Types.ObjectId.isValid(cursor)
-        ? { _id: { $lt: new mongoose.Types.ObjectId(cursor) } }
-        : {};
+      filterConditions.length > 0 ? { $and: filterConditions } : {};
 
     const posts = await Post.find(filter)
       .sort({ _id: -1 })
@@ -87,8 +129,46 @@ export async function GET(request: Request) {
       nextCursor = nextPost ? nextPost.id : null;
     }
 
+    const countTargetIds = new Set<string>();
+    posts.forEach((post) => {
+      countTargetIds.add(post._id.toString());
+    });
+    if (replyingToId) {
+      countTargetIds.add(replyingToId.toString());
+    }
+
+    const replyCounts =
+      countTargetIds.size > 0
+        ? await Post.aggregate<{
+            _id: mongoose.Types.ObjectId;
+            count: number;
+          }>([
+            {
+              $match: {
+                "replyingTo.postId": {
+                  $in: Array.from(countTargetIds).map(
+                    (id) => new mongoose.Types.ObjectId(id)
+                  ),
+                },
+              },
+            },
+            {
+              $group: {
+                _id: "$replyingTo.postId",
+                count: { $sum: 1 },
+              },
+            },
+          ])
+        : [];
+
+    const replyCountMap = new Map<string, number>();
+    replyCounts.forEach((entry) => {
+      replyCountMap.set(entry._id.toString(), entry.count);
+    });
+
     const normalizedPosts = await serializePosts(posts, {
       currentUserId,
+      replyCounts: replyCountMap,
     });
 
     return NextResponse.json({
@@ -183,10 +263,7 @@ export async function POST(request: Request) {
       userId: user._id,
       username: user.username,
       name: user.name ?? session.user.name ?? "HustleHub Creator",
-      avatar:
-        user.image ??
-        session.user.image ??
-        DEFAULT_AVATAR,
+      avatar: user.image ?? session.user.image ?? DEFAULT_AVATAR,
       ...(resolvedType ? { type: resolvedType } : {}),
       description: payload.description,
       stats: payload.stats,
@@ -202,7 +279,9 @@ export async function POST(request: Request) {
         parentPost.userId instanceof mongoose.Types.ObjectId
           ? parentPost.userId
           : new mongoose.Types.ObjectId(parentPost.userId as any);
-      const isSelfReply = parentOwnerId.equals(user._id as mongoose.Types.ObjectId);
+      const isSelfReply = parentOwnerId.equals(
+        user._id as mongoose.Types.ObjectId
+      );
 
       if (!isSelfReply) {
         const actorUsername =
@@ -220,7 +299,8 @@ export async function POST(request: Request) {
         const actorAvatar =
           typeof user.image === "string" && user.image.length > 0
             ? user.image
-            : typeof session.user?.image === "string" && session.user.image.length > 0
+            : typeof session.user?.image === "string" &&
+              session.user.image.length > 0
             ? session.user.image
             : DEFAULT_AVATAR;
 

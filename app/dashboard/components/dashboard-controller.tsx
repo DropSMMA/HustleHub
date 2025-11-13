@@ -87,6 +87,10 @@ const DashboardController: React.FC = () => {
     handleLoadMoreActivities,
     handleRefresh,
     ensureInitialActivities,
+    fetchRepliesForActivity,
+    loadingReplyThreads,
+    fetchAllActivitiesForUser,
+    loadedUserActivities,
   } = useDashboardActivities({
     challenges,
     userProfile,
@@ -203,7 +207,37 @@ const DashboardController: React.FC = () => {
     });
   };
 
+  const ensureRepliesLoaded = useCallback(
+    (activityId: string | null) => {
+      if (!activityId) {
+        return;
+      }
+      if (loadingReplyThreads[activityId]) {
+        return;
+      }
+      void fetchRepliesForActivity(activityId);
+    },
+    [fetchRepliesForActivity, loadingReplyThreads]
+  );
+
   const handleViewProfile = handleViewProfileFromHook;
+
+  useEffect(() => {
+    if (currentView !== "profile" || !userProfile?.username) {
+      return;
+    }
+
+    if (loadedUserActivities[userProfile.username.toLowerCase()]) {
+      return;
+    }
+
+    void fetchAllActivitiesForUser(userProfile.username);
+  }, [
+    currentView,
+    fetchAllActivitiesForUser,
+    loadedUserActivities,
+    userProfile?.username,
+  ]);
 
   const handleViewActivityDetail = useCallback(
     (activityId: string, options?: { commentId?: string }) => {
@@ -213,8 +247,9 @@ const DashboardController: React.FC = () => {
       setViewingActivityId(activityId);
       setHighlightedCommentId(options?.commentId ?? null);
       setCurrentView("activityDetail");
+      ensureRepliesLoaded(activityId);
     },
-    [currentView]
+    [currentView, ensureRepliesLoaded]
   );
 
   const handleStartReply = useCallback(
@@ -359,6 +394,7 @@ const DashboardController: React.FC = () => {
     highlightedCommentId,
     viewingActivityId,
     handleCloseActivityDetail,
+    loadingReplyThreads,
   });
 
   return (

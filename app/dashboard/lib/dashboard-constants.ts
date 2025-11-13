@@ -29,6 +29,7 @@ export const createWelcomeActivity = (profile: UserProfile): Activity => ({
   likedBy: [],
   comments: [],
   timestamp: "Just now",
+  createdAtIso: new Date().toISOString(),
 });
 
 export const MOCK_USER_PROFILES: Record<string, UserProfile> = {
@@ -114,6 +115,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
       },
     ],
     timestamp: "2h ago",
+    createdAtIso: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "2",
@@ -135,6 +137,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
       },
     ],
     timestamp: "5h ago",
+    createdAtIso: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "3",
@@ -148,6 +151,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
     kudos: 210,
     comments: [],
     timestamp: "8h ago",
+    createdAtIso: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
   },
 ];
 

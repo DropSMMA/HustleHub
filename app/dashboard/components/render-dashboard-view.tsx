@@ -82,6 +82,7 @@ export interface DashboardRenderParams {
   highlightedCommentId: string | null;
   viewingActivityId: string | null;
   handleCloseActivityDetail: () => void;
+  loadingReplyThreads: Record<string, boolean>;
 }
 
 const renderDashboardView = ({
@@ -126,6 +127,7 @@ const renderDashboardView = ({
   highlightedCommentId,
   viewingActivityId,
   handleCloseActivityDetail,
+  loadingReplyThreads,
 }: DashboardRenderParams): React.ReactNode => {
   switch (currentView) {
     case "feed":
@@ -171,6 +173,9 @@ const renderDashboardView = ({
           onViewProfile={handleViewProfile}
           highlightedReplyId={highlightedCommentId}
           onViewActivityDetail={handleViewActivityDetail}
+          isThreadLoading={Boolean(
+            loadingReplyThreads[viewingActivityId] ?? false
+          )}
         />
       );
     }

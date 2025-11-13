@@ -314,10 +314,18 @@ const useDashboardUserProfile = ({
             mappedActivities.forEach((activity) => {
               const existingIndex = indexMap.get(activity.id);
               if (existingIndex !== undefined) {
-                updated[existingIndex] = {
-                  ...updated[existingIndex],
+                const existing = updated[existingIndex];
+                const merged = {
+                  ...existing,
                   ...activity,
                 };
+
+                merged.replyingTo =
+                  activity.replyingTo === undefined
+                    ? existing.replyingTo
+                    : activity.replyingTo ?? undefined;
+
+                updated[existingIndex] = merged;
                 hasChanges = true;
               } else {
                 updated.push(activity);

@@ -4,6 +4,7 @@ import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import Post from "@/models/Post";
+import { serializePosts, type OwnerInfo } from "../../posts/utils";
 
 const paramsSchema = z.object({
   username: z
@@ -112,36 +113,20 @@ export async function GET(request: Request, context: any) {
       .sort({ createdAt: -1 })
       .limit(50);
 
-    const ownerDetails = {
-      name: normalizedUser.name,
-      username: normalizedUser.username,
-      avatar: normalizedUser.avatar,
-    };
+    const ownerOverrides = new Map<string, OwnerInfo>();
+    const userIdString = userDoc._id ? userDoc._id.toString() : null;
 
-    const serializedPosts = posts.map((post) => {
-      const likedBy =
-        Array.isArray(post.likedBy) && post.likedBy.length > 0
-          ? post.likedBy.map((id) => id.toString())
-          : [];
+    if (userIdString) {
+      ownerOverrides.set(userIdString, {
+        name: normalizedUser.name,
+        username: normalizedUser.username,
+        avatar: normalizedUser.avatar,
+      });
+    }
 
-      return {
-        id: post._id.toString(),
-        userId: post.userId.toString(),
-        username: post.username,
-        name: ownerDetails.name || post.name,
-        avatar: ownerDetails.avatar,
-        type: post.type,
-        description: post.description,
-        stats: post.stats,
-        image: post.image,
-        kudos: likedBy.length,
-        likedByCurrentUser: viewerId ? likedBy.includes(viewerId) : false,
-        likedBy,
-        comments: post.comments ?? [],
-        createdAt: post.createdAt?.toISOString?.() ?? new Date().toISOString(),
-        updatedAt: post.updatedAt?.toISOString?.() ?? new Date().toISOString(),
-        owner: ownerDetails,
-      };
+    const serializedPosts = await serializePosts(posts, {
+      currentUserId: viewerId,
+      ownerOverrides: ownerOverrides.size > 0 ? ownerOverrides : undefined,
     });
 
     return NextResponse.json(

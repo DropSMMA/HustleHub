@@ -4,11 +4,11 @@ import mongoose from "mongoose";
 import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
-import Post, { type IPost } from "@/models/Post";
+import Post from "@/models/Post";
+import type { IPost } from "@/models/Post";
 import Notification from "@/models/Notification";
 import { ActivityType, NotificationType } from "@/app/types";
-
-type SerializedPost = Record<string, any>;
+import { serializePosts, toStringId, type OwnerInfo } from "./utils";
 
 const isValidImage = (value: string) => /^https?:\/\//.test(value);
 const DEFAULT_AVATAR =
@@ -42,165 +42,11 @@ const createPostSchema = z
     }
   });
 
-type OwnerInfo = {
-  name: string;
-  username: string;
-  avatar: string;
-};
-
 type PostDoc = mongoose.HydratedDocument<IPost>;
 
 type SerializeOptions = {
   currentUserId: string | null;
   ownerOverrides?: Map<string, OwnerInfo>;
-};
-
-const toStringId = (value: unknown): string | undefined => {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (value instanceof mongoose.Types.ObjectId) {
-    return value.toString();
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "toString" in value &&
-    typeof (value as { toString: () => string }).toString === "function"
-  ) {
-    const stringValue = (value as { toString: () => string }).toString();
-    return /^[a-fA-F0-9]{24}$/.test(stringValue) ? stringValue : undefined;
-  }
-
-  return undefined;
-};
-
-const serializePosts = async (
-  posts: PostDoc[],
-  { currentUserId, ownerOverrides }: SerializeOptions
-) => {
-  if (posts.length === 0) {
-    return [] as SerializedPost[];
-  }
-
-  const serializedPosts = posts.map((post) => post.toJSON() as SerializedPost);
-
-  const likedByLists = posts.map((post) =>
-    Array.isArray(post.likedBy)
-      ? post.likedBy
-          .map((id) => toStringId(id))
-          .filter((id): id is string => Boolean(id))
-      : []
-  );
-
-  const userIds = new Set<string>();
-  const replyingToSnapshots: Array<
-    | {
-        activityId: string;
-        username: string;
-        name?: string | null;
-      }
-    | undefined
-  > = [];
-
-  serializedPosts.forEach((post, index) => {
-    const original = posts[index];
-    const userId =
-      toStringId(post.userId) ?? toStringId(original.userId as unknown);
-
-    if (userId) {
-      userIds.add(userId);
-    }
-
-    const replyingToRaw =
-      (post as { replyingTo?: unknown }).replyingTo ??
-      (original.replyingTo as unknown);
-
-    let replyingTo;
-    if (replyingToRaw && typeof replyingToRaw === "object") {
-      const { postId, username, name } = replyingToRaw as {
-        postId?: unknown;
-        username?: unknown;
-        name?: unknown;
-      };
-
-      const activityId = toStringId(postId);
-
-      if (activityId) {
-        const fallbackUsername =
-          typeof username === "string" && username.length > 0
-            ? username
-            : original.replyingTo?.username ?? "";
-        const fallbackName =
-          typeof name === "string"
-            ? name
-            : name === null
-            ? null
-            : original.replyingTo?.name ?? null;
-
-        replyingTo = {
-          activityId,
-          username: fallbackUsername,
-          name: fallbackName,
-        };
-      }
-    }
-
-    replyingToSnapshots.push(replyingTo);
-  });
-
-  const ownerMap = new Map<string, OwnerInfo>();
-
-  if (userIds.size > 0) {
-    const owners = await User.find({ _id: { $in: Array.from(userIds) } })
-      .select("username name image")
-      .lean();
-
-    owners.forEach((owner) => {
-      ownerMap.set(owner._id.toString(), {
-        name: owner.name ?? "",
-        username: owner.username ?? "",
-        avatar: (owner.image as string | undefined) ?? DEFAULT_AVATAR,
-      });
-    });
-  }
-
-  if (ownerOverrides) {
-    ownerOverrides.forEach((value, key) => {
-      ownerMap.set(key, value);
-    });
-  }
-
-  return serializedPosts.map((post, index) => {
-    const likedBy = likedByLists[index];
-    const userId =
-      toStringId(post.userId) ?? toStringId(posts[index].userId as unknown);
-    const replyingTo = replyingToSnapshots[index];
-
-    const owner =
-      (userId && ownerMap.get(userId)) ||
-      (post.username || post.name || post.avatar
-        ? {
-            name: post.name ?? "",
-            username: post.username ?? "",
-            avatar: post.avatar ?? DEFAULT_AVATAR,
-          }
-        : undefined);
-
-    return {
-      ...post,
-      userId,
-      likedByCurrentUser: Boolean(
-        currentUserId && likedBy.includes(currentUserId)
-      ),
-      kudos: likedBy.length,
-      likedBy,
-      replyingTo,
-      owner,
-    };
-  });
 };
 
 export async function GET(request: Request) {

@@ -76,6 +76,23 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     return counts;
   }, [activities]);
 
+  const { exactTimeLabel, exactDateTimeLabel } = useMemo(() => {
+    if (!activity.timestampExact) {
+      return { exactTimeLabel: null, exactDateTimeLabel: null };
+    }
+    const exactDate = new Date(activity.timestampExact);
+    if (Number.isNaN(exactDate.getTime())) {
+      return { exactTimeLabel: null, exactDateTimeLabel: null };
+    }
+    return {
+      exactTimeLabel: exactDate.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      exactDateTimeLabel: exactDate.toLocaleString(),
+    };
+  }, [activity.timestampExact]);
+
   const replies = useMemo(
     () =>
       activities.filter(
@@ -189,8 +206,21 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               <p className="text-sm font-bold text-brand-text-primary group-hover/user:text-brand-neon transition-colors">
                 {activity.user}
               </p>
-              <p className="text-xs text-brand-text-secondary">
-                {activity.timestamp}
+              <p
+                className="text-xs text-brand-text-secondary flex items-center gap-2"
+                {...(exactDateTimeLabel ? { title: exactDateTimeLabel } : undefined)}
+              >
+                <span>{activity.timestamp}</span>
+                {exactTimeLabel && (
+                  <>
+                    <span className="text-brand-border" aria-hidden="true">
+                      |
+                    </span>
+                    <span className="text-brand-text-secondary">
+                      {exactTimeLabel}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </button>

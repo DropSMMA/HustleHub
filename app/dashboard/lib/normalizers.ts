@@ -102,6 +102,7 @@ export const mapPostToActivity = (post: PostDTO): Activity => ({
   likedBy: post.likedBy ?? [],
   comments: post.comments ?? [],
   timestamp: formatRelativeTime(post.createdAt),
+  timestampExact: post.createdAt,
   replyingTo: post.replyingTo,
   replyCount: typeof post.replyCount === "number" ? post.replyCount : 0,
 });

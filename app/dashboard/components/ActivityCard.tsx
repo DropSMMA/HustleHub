@@ -49,6 +49,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     image,
     timestamp,
     username,
+    timestampExact,
     likedByCurrentUser = false,
     kudos,
     replyingTo,
@@ -75,6 +76,23 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
       : `${description.slice(0, DESCRIPTION_CHAR_LIMIT).trimEnd()}…`;
 
   const isOwner = currentUser?.username === username;
+
+  const { exactTimeLabel, exactDateTimeLabel } = useMemo(() => {
+    if (!timestampExact) {
+      return { exactTimeLabel: null, exactDateTimeLabel: null };
+    }
+    const exactDate = new Date(timestampExact);
+    if (Number.isNaN(exactDate.getTime())) {
+      return { exactTimeLabel: null, exactDateTimeLabel: null };
+    }
+    return {
+      exactTimeLabel: exactDate.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      exactDateTimeLabel: exactDate.toLocaleString(),
+    };
+  }, [timestampExact]);
 
   const mentionMetaMap = useMemo(() => {
     const map = new Map<string, ActivityMention>();
@@ -399,7 +417,24 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
                 <p className="text-sm font-bold text-brand-text-primary group-hover/user:text-brand-neon transition-colors">
                   {user}
                 </p>
-                <p className="text-xs text-brand-text-secondary">{timestamp}</p>
+                <p
+                  className="text-xs text-brand-text-secondary flex items-center gap-2"
+                  {...(exactDateTimeLabel
+                    ? { title: exactDateTimeLabel }
+                    : undefined)}
+                >
+                  <span>{timestamp}</span>
+                  {exactTimeLabel && (
+                    <>
+                      <span className="text-brand-border" aria-hidden="true">
+                        |
+                      </span>
+                      <span className="text-brand-text-secondary">
+                        {exactTimeLabel}
+                      </span>
+                    </>
+                  )}
+                </p>
               </div>
             </button>
             {isOwner && onDelete && (

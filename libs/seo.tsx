@@ -58,10 +58,24 @@ export const getSEOTags = ({
       creator: "@marc_louvion",
     },
     themeColor: config.colors.main,
+    manifest: "/manifest.webmanifest",
+    icons: {
+      icon: [
+        { url: "/favicon.ico" },
+        { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+      shortcut: ["/favicon.ico"],
+    },
     appleWebApp: {
       capable: true,
       title: config.appName,
       statusBarStyle: "black-translucent",
+    },
+    other: {
+      "mobile-web-app-capable": "yes",
+      "apple-mobile-web-app-capable": "yes",
+      "apple-mobile-web-app-status-bar-style": "black-translucent",
     },
 
     // If a canonical URL is given, we add it. The metadataBase will turn the relative URL into a fully qualified URL

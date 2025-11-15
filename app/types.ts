@@ -47,6 +47,36 @@ export interface Activity {
   };
   replyCount?: number;
   mentions?: ActivityMention[];
+  streak?: ActivityStreak;
+}
+
+export interface ActivityStreak {
+  category: ActivityType;
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate?: string | null;
+}
+
+export interface LeaderboardUserSummary {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string;
+}
+
+export interface LeaderboardEntry {
+  category: ActivityType;
+  rank: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate?: string | null;
+  user: LeaderboardUserSummary;
+}
+
+export interface CategoryLeaderboard {
+  category: ActivityType;
+  entries: LeaderboardEntry[];
+  generatedAt: string;
 }
 
 export interface Challenge {
@@ -73,6 +103,7 @@ export type View =
   | "log"
   | "insights"
   | "research"
+  | "leaderboards"
   | "challenges"
   | "profile"
   | "publicProfile"

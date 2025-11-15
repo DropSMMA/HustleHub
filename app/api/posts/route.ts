@@ -13,6 +13,11 @@ import {
   type MentionType,
 } from "@/app/types";
 import { serializePosts, toStringId, type OwnerInfo } from "./utils";
+import {
+  buildStreakKey,
+  getStreakSummaries,
+  recordActivityStreak,
+} from "@/libs/streaks";
 
 const isValidImage = (value: string) => /^https?:\/\//.test(value);
 const DEFAULT_AVATAR =
@@ -83,11 +88,6 @@ type MentionInput = z.infer<typeof mentionSchema>;
 type CreatePostInput = z.infer<typeof createPostSchema>;
 
 type PostDoc = mongoose.HydratedDocument<IPost>;
-
-type SerializeOptions = {
-  currentUserId: string | null;
-  ownerOverrides?: Map<string, OwnerInfo>;
-};
 
 export async function GET(request: Request) {
   try {
@@ -206,13 +206,60 @@ export async function GET(request: Request) {
       replyCountMap.set(entry._id.toString(), entry.count);
     });
 
+    const streakTargets: Array<{ userId: string; category: ActivityType }> = [];
+    const streakKeys = new Set<string>();
+
+    posts.forEach((post) => {
+      const category = post.type as ActivityType | undefined;
+      if (!category) {
+        return;
+      }
+      const userId = toStringId(post.userId as unknown);
+      if (!userId) {
+        return;
+      }
+      const key = buildStreakKey(userId, category);
+      if (streakKeys.has(key)) {
+        return;
+      }
+      streakKeys.add(key);
+      streakTargets.push({ userId, category });
+    });
+
+    const streakMap =
+      streakTargets.length > 0
+        ? await getStreakSummaries(streakTargets)
+        : new Map();
+
     const normalizedPosts = await serializePosts(posts, {
       currentUserId,
       replyCounts: replyCountMap,
     });
 
+    const decoratedPosts = normalizedPosts.map((post, index) => {
+      const category = posts[index].type as ActivityType | undefined;
+      const userId = toStringId(posts[index].userId as unknown);
+      if (!category || !userId) {
+        return post;
+      }
+      const summary = streakMap.get(buildStreakKey(userId, category));
+      if (!summary) {
+        return post;
+      }
+
+      return {
+        ...post,
+        streak: {
+          category,
+          currentStreak: summary.currentStreak,
+          longestStreak: summary.longestStreak,
+          lastActiveDate: summary.lastActiveDate?.toISOString() ?? null,
+        },
+      };
+    });
+
     return NextResponse.json({
-      posts: normalizedPosts,
+      posts: decoratedPosts,
       nextCursor,
     });
   } catch (error) {
@@ -501,9 +548,32 @@ export async function POST(request: Request) {
       ownerOverrides: ownerOverride,
     });
 
+    let streakSummary = null;
+    if (resolvedType) {
+      streakSummary = await recordActivityStreak({
+        userId: user._id,
+        category: resolvedType,
+        activityDate: post.createdAt,
+      });
+    }
+
+    const decoratedPost =
+      streakSummary && resolvedType
+        ? {
+            ...normalizedPost,
+            streak: {
+              category: resolvedType,
+              currentStreak: streakSummary.currentStreak,
+              longestStreak: streakSummary.longestStreak,
+              lastActiveDate:
+                streakSummary.lastActiveDate?.toISOString() ?? null,
+            },
+          }
+        : normalizedPost;
+
     return NextResponse.json(
       {
-        post: normalizedPost,
+        post: decoratedPost,
       },
       {
         status: 201,

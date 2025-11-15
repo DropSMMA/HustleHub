@@ -9,8 +9,10 @@ import Connections from "@/app/dashboard/components/Connections";
 import Research from "@/app/dashboard/components/Research";
 import Settings from "@/app/dashboard/components/Settings";
 import ActivityDetail from "@/app/dashboard/components/ActivityDetail";
+import Leaderboards from "@/app/dashboard/components/Leaderboards";
 import {
   Activity,
+  CategoryLeaderboard,
   Challenge,
   Notification,
   UserChallenge,
@@ -87,6 +89,10 @@ export interface DashboardRenderParams {
   loadingReplyThreads: Record<string, boolean>;
   userActivitiesByUsername: Record<string, Activity[]>;
   allUsers?: Record<string, UserProfile>;
+  leaderboards: CategoryLeaderboard[];
+  isLeaderboardsLoading: boolean;
+  leaderboardsError: string | null;
+  refreshLeaderboards: () => Promise<void>;
 }
 
 const renderDashboardView = ({
@@ -135,6 +141,10 @@ const renderDashboardView = ({
   loadingReplyThreads,
   userActivitiesByUsername,
   allUsers,
+  leaderboards,
+  isLeaderboardsLoading,
+  leaderboardsError,
+  refreshLeaderboards,
 }: DashboardRenderParams): React.ReactNode => {
   switch (currentView) {
     case "feed":
@@ -361,6 +371,16 @@ const renderDashboardView = ({
           userProfile={userProfile}
           onBack={() => setCurrentView("profile")}
           onUpdateEmail={(email) => console.log("Email updated:", email)}
+        />
+      );
+    case "leaderboards":
+      return (
+        <Leaderboards
+          data={leaderboards}
+          isLoading={isLeaderboardsLoading}
+          error={leaderboardsError}
+          onRefresh={refreshLeaderboards}
+          currentUser={userProfile}
         />
       );
     default:

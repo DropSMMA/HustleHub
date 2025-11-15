@@ -11,6 +11,7 @@ import { CommentIcon } from "./icons/CommentIcon";
 import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
 import ImageModal from "./icons/imagemodal";
+import { FlameIcon } from "./icons/FlameIcon";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -54,6 +55,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     kudos,
     replyingTo,
     mentions = [],
+    streak,
   } = activity;
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -486,6 +488,13 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
               {stats && stats.trim().length > 0 && (
                 <span className="text-xs font-semibold bg-brand-tertiary text-brand-text-secondary px-3 py-1 rounded-full">
                   {stats}
+                </span>
+              )}
+              {streak && streak.currentStreak > 0 && (
+                <span className="text-xs font-semibold bg-brand-tertiary text-brand-neon px-3 py-1 rounded-full flex items-center gap-2">
+                  <FlameIcon className="w-4 h-4 text-brand-neon" />
+                  {streak.currentStreak} day
+                  {streak.currentStreak === 1 ? "" : "s"} streak
                 </span>
               )}
             </div>

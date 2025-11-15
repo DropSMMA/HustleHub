@@ -1,5 +1,6 @@
 import {
   Activity,
+  ActivityStreak,
   ActivityType,
   Comment,
   ConnectionPreview,
@@ -38,6 +39,7 @@ export interface PostDTO {
     name?: string | null;
   };
   replyCount?: number;
+  streak?: ActivityStreak;
 }
 
 export const formatRelativeTime = (dateString: string): string => {
@@ -105,6 +107,7 @@ export const mapPostToActivity = (post: PostDTO): Activity => ({
   timestampExact: post.createdAt,
   replyingTo: post.replyingTo,
   replyCount: typeof post.replyCount === "number" ? post.replyCount : 0,
+  streak: post.streak,
 });
 
 export const mapPostsToActivities = (posts: PostDTO[]): Activity[] =>

@@ -27,6 +27,7 @@ import {
 } from "../lib/dashboard-constants";
 import renderDashboardView from "./render-dashboard-view";
 import { getHustleBalanceInsight } from "@/libs/geminiService";
+import { useStreakLeaderboards } from "../hooks/useStreakLeaderboards";
 
 const DashboardController: React.FC = () => {
   const { data: session, status: sessionStatus } = useSession();
@@ -130,6 +131,17 @@ const DashboardController: React.FC = () => {
     setConnectionDirectory,
   });
 
+  const {
+    leaderboards,
+    isLoading: isLeaderboardsLoading,
+    error: leaderboardsError,
+    fetchLeaderboards,
+  } = useStreakLeaderboards();
+
+  const refreshLeaderboards = useCallback(async () => {
+    await fetchLeaderboards({ force: true });
+  }, [fetchLeaderboards]);
+
   const allKnownUsers = useMemo(() => {
     const directory: Record<string, UserProfile> = {};
 
@@ -215,6 +227,13 @@ const DashboardController: React.FC = () => {
     userProfile?.username,
     fetchResearchDirectory,
   ]);
+
+  useEffect(() => {
+    if (currentView !== "leaderboards") {
+      return;
+    }
+    void fetchLeaderboards();
+  }, [currentView, fetchLeaderboards]);
 
   const handleJoinChallenge = (challengeId: string) => {
     setUserChallenges((prev) => {
@@ -437,6 +456,10 @@ const DashboardController: React.FC = () => {
     loadingReplyThreads,
     userActivitiesByUsername,
     allUsers: allKnownUsers,
+    leaderboards,
+    isLeaderboardsLoading,
+    leaderboardsError,
+    refreshLeaderboards,
   });
 
   return (

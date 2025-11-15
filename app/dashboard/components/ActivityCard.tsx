@@ -1,9 +1,4 @@
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { Activity, ActivityMention, UserProfile } from "@/app/types";
 import { ThumbsUpIcon } from "./icons/ThumbsUpIcon";
 import { ThumbsUpFilledIcon } from "./icons/ThumbsUpFilledIcon";
@@ -11,7 +6,7 @@ import { CommentIcon } from "./icons/CommentIcon";
 import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
 import ImageModal from "./icons/imagemodal";
-import { FlameIcon } from "./icons/FlameIcon";
+import { BoltIcon } from "./icons/BoltIcon";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -260,10 +255,15 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
 
             const projectCandidate = posterProfile?.projects.find((project) => {
               const normalizedToken = mentionToken.toLowerCase();
-              const compactName = project.name.replace(/\s+/g, "").toLowerCase();
-              const hyphenName = project.name.replace(/\s+/g, "-").toLowerCase();
+              const compactName = project.name
+                .replace(/\s+/g, "")
+                .toLowerCase();
+              const hyphenName = project.name
+                .replace(/\s+/g, "-")
+                .toLowerCase();
               return (
-                compactName === normalizedToken || hyphenName === normalizedToken
+                compactName === normalizedToken ||
+                hyphenName === normalizedToken
               );
             });
 
@@ -479,22 +479,21 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
                 {isDescriptionExpanded ? "See less" : "See more"}
               </button>
             )}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {type && (
-                <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">
-                  {type}
-                </span>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              {(type || (streak && streak.currentStreak > 1)) && (
+                <div className="inline-flex items-center gap-x-2 bg-brand-neon/10 text-brand-neon rounded-full text-xs font-semibold px-3 py-1">
+                  {streak && streak.currentStreak > 0 && (
+                    <span className="inline-flex items-center gap-0.5 animate-pop">
+                      <BoltIcon className="h-4 w-4" />
+                      <span>{streak.currentStreak}</span>
+                    </span>
+                  )}
+                  {type && <span>{type}</span>}
+                </div>
               )}
               {stats && stats.trim().length > 0 && (
                 <span className="text-xs font-semibold bg-brand-tertiary text-brand-text-secondary px-3 py-1 rounded-full">
                   {stats}
-                </span>
-              )}
-              {streak && streak.currentStreak > 0 && (
-                <span className="text-xs font-semibold bg-brand-tertiary text-brand-neon px-3 py-1 rounded-full flex items-center gap-2">
-                  <FlameIcon className="w-4 h-4 text-brand-neon" />
-                  {streak.currentStreak} day
-                  {streak.currentStreak === 1 ? "" : "s"} streak
                 </span>
               )}
             </div>
@@ -508,7 +507,11 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
             className="w-full h-64 block focus:outline-none"
             aria-label="View image larger"
           >
-            <img className="w-full h-full object-cover" src={image} alt="Activity" />
+            <img
+              className="w-full h-full object-cover"
+              src={image}
+              alt="Activity"
+            />
           </button>
         )}
 

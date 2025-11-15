@@ -6,6 +6,7 @@ import {
   UserProfile,
 } from "@/app/types";
 import { FlameIcon } from "./icons/FlameIcon";
+import LoadingIndicator from "./LoadingIndicator";
 
 interface LeaderboardsProps {
   data: CategoryLeaderboard[];
@@ -13,6 +14,7 @@ interface LeaderboardsProps {
   error: string | null;
   onRefresh: () => void | Promise<void>;
   currentUser?: UserProfile | null;
+  onViewProfile?: (username: string) => void;
 }
 
 const categoryLabels: Record<ActivityType, string> = {
@@ -43,95 +45,13 @@ const formatLastActive = (value?: string | null): string => {
   return `${diffDays} days ago`;
 };
 
-const LeaderboardList: React.FC<{
-  entries: LeaderboardEntry[];
-  currentUser?: UserProfile | null;
-}> = ({ entries, currentUser }) => {
-  if (entries.length === 0) {
-    return (
-      <div className="bg-brand-secondary border border-dashed border-brand-border rounded-2xl p-8 text-center space-y-3">
-        <FlameIcon className="w-10 h-10 mx-auto text-brand-text-secondary" />
-        <p className="text-brand-text-primary font-semibold text-lg">
-          No streaks yet
-        </p>
-        <p className="text-brand-text-secondary text-sm">
-          Be the first to start a streak in this category by logging a new
-          activity.
-        </p>
-      </div>
-    );
-  }
-
-  const normalizedUsername = currentUser?.username?.toLowerCase();
-
-  return (
-    <ul className="space-y-3">
-      {entries.map((entry) => {
-        const isCurrentUser =
-          normalizedUsername &&
-          entry.user.username.toLowerCase() === normalizedUsername;
-        const usernameLabel = entry.user.username
-          ? `@${entry.user.username}`
-          : "Unknown";
-
-        return (
-          <li
-            key={`${entry.category}-${entry.user.id}`}
-            className={`flex items-center justify-between bg-brand-secondary rounded-2xl border px-4 py-3 gap-4 ${
-              isCurrentUser
-                ? "border-brand-neon/50 shadow-lg shadow-brand-neon/10"
-                : "border-brand-border"
-            }`}
-          >
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-brand-tertiary text-brand-text-secondary font-bold">
-                #{entry.rank}
-              </div>
-              <img
-                src={entry.user.avatar}
-                alt={entry.user.name}
-                className="w-12 h-12 rounded-full object-cover border border-brand-border"
-              />
-              <div className="min-w-0">
-                <p className="text-brand-text-primary font-semibold truncate">
-                  {entry.user.name}
-                  {isCurrentUser && (
-                    <span className="ml-2 text-xs uppercase tracking-wider text-brand-neon">
-                      You
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-brand-text-secondary">
-                  {usernameLabel}
-                </p>
-                <p className="text-xs text-brand-text-secondary mt-1">
-                  Last active: {formatLastActive(entry.lastActiveDate)}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="flex items-center justify-end gap-2 text-brand-neon font-bold text-base">
-                <FlameIcon className="w-4 h-4 text-brand-neon" />
-                {entry.currentStreak} day{entry.currentStreak === 1 ? "" : "s"}
-              </p>
-              <p className="text-xs text-brand-text-secondary">
-                Personal best: {entry.longestStreak} day
-                {entry.longestStreak === 1 ? "" : "s"}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-};
-
 const Leaderboards: React.FC<LeaderboardsProps> = ({
   data,
   isLoading,
   error,
   onRefresh,
   currentUser,
+  onViewProfile,
 }) => {
   const categories = useMemo(() => {
     if (data.length > 0) {
@@ -140,49 +60,50 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
     return Object.values(ActivityType);
   }, [data]);
 
-  const [activeCategory, setActiveCategory] = useState<ActivityType>(
+  const [selectedCategory, setSelectedCategory] = useState<ActivityType>(
     categories[0]
   );
 
   useEffect(() => {
-    if (!categories.includes(activeCategory) && categories.length > 0) {
-      setActiveCategory(categories[0]);
+    if (!categories.includes(selectedCategory) && categories.length > 0) {
+      setSelectedCategory(categories[0]);
     }
-  }, [categories, activeCategory]);
+  }, [categories, selectedCategory]);
 
-  const activeEntries =
-    data.find((item) => item.category === activeCategory)?.entries ?? [];
+  const rankedEntries =
+    data.find((item) => item.category === selectedCategory)?.entries ?? [];
+
+  const getRankColor = (index: number) => {
+    switch (index) {
+      case 0:
+        return "text-yellow-400";
+      case 1:
+        return "text-gray-400";
+      case 2:
+        return "text-yellow-600";
+      default:
+        return "text-brand-text-secondary";
+    }
+  };
+
+  const selectedCategoryLabel = categoryLabels[selectedCategory];
 
   return (
-    <section className="container mx-auto px-4 max-w-3xl space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-extrabold tracking-tight">
-            Leaderboards
-          </h2>
-          <p className="text-brand-text-secondary">
-            Track the hottest streaks across every hustle category.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onRefresh()}
-          className="btn btn-sm btn-outline border-brand-border text-brand-text-primary hover:border-brand-neon hover:text-brand-neon"
-        >
-          Refresh
-        </button>
+    <section className="container mx-auto px-4 max-w-2xl space-y-6 animate-fade-in">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <h2 className="text-3xl font-bold font-display">Leaderboards</h2>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 justify-center px-2">
         {categories.map((category) => (
           <button
             key={category}
             type="button"
-            onClick={() => setActiveCategory(category)}
-            className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${
-              activeCategory === category
-                ? "bg-brand-neon text-brand-primary border-brand-neon"
-                : "border-brand-border text-brand-text-secondary hover:text-brand-text-primary"
+            onClick={() => setSelectedCategory(category)}
+            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 whitespace-nowrap ${
+              selectedCategory === category
+                ? "bg-brand-neon text-brand-primary"
+                : "bg-brand-secondary text-brand-text-secondary hover:bg-brand-tertiary"
             }`}
           >
             {categoryLabels[category]}
@@ -191,14 +112,13 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
       </div>
 
       {isLoading && (
-        <div className="bg-brand-secondary border border-brand-border rounded-2xl p-10 text-center space-y-4">
-          <div className="w-12 h-12 rounded-full border-4 border-brand-border border-t-brand-neon mx-auto animate-spin" />
-          <p className="text-brand-text-secondary">Loading streaks…</p>
+        <div className="bg-brand-secondary border border-brand-border rounded-2xl p-10 text-center">
+          <LoadingIndicator label="Loading streaks…" size="lg" />
         </div>
       )}
 
       {error && !isLoading && (
-        <div className="bg-red-500/10 border border-red-500/40 rounded-2xl p-6 space-y-3">
+        <div className="bg-red-500/10 border border-red-500/40 rounded-2xl p-6 space-y-3 text-center">
           <p className="text-red-200 font-semibold">Unable to load leaderboards</p>
           <p className="text-sm text-red-200/80">{error}</p>
           <button
@@ -212,7 +132,87 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
       )}
 
       {!isLoading && !error && (
-        <LeaderboardList entries={activeEntries} currentUser={currentUser} />
+        <div className="space-y-3">
+          {rankedEntries.length > 0 ? (
+            rankedEntries.map((entry, index) => {
+              const usernameLabel = entry.user.username
+                ? `@${entry.user.username}`
+                : "Unknown";
+              const isCurrentUser =
+                currentUser?.username &&
+                entry.user.username.toLowerCase() ===
+                  currentUser.username.toLowerCase();
+
+              const content = (
+                <>
+                  <div className={`w-8 text-center text-xl font-bold ${getRankColor(index)}`}>
+                    {index + 1}
+                  </div>
+                  <div className="flex items-center space-x-3 flex-grow min-w-0">
+                    <img
+                      src={entry.user.avatar}
+                      alt={entry.user.name}
+                      className="h-12 w-12 rounded-full object-cover border border-brand-border"
+                    />
+                    <div className="min-w-0 text-left">
+                      <p className="font-bold text-brand-text-primary truncate">
+                        {entry.user.name}
+                      </p>
+                      <p className="text-sm text-brand-text-secondary truncate">
+                        {usernameLabel}
+                      </p>
+                      <p className="text-xs text-brand-text-secondary">
+                        Last active: {formatLastActive(entry.lastActiveDate)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-brand-neon">
+                      {entry.currentStreak}
+                    </p>
+                    <p className="text-xs text-brand-text-secondary">
+                      day streak
+                    </p>
+                  </div>
+                </>
+              );
+
+              const Wrapper = onViewProfile ? "button" : "div";
+
+              return (
+                <Wrapper
+                  key={`${entry.category}-${entry.user.id}`}
+                  type={onViewProfile ? "button" : undefined}
+                  onClick={
+                    onViewProfile
+                      ? () => onViewProfile(entry.user.username)
+                      : undefined
+                  }
+                  className={`w-full bg-brand-secondary border p-3 rounded-lg flex items-center space-x-4 transition-transform duration-200 hover:scale-[1.02] hover:border-brand-neon/50 ${
+                    isCurrentUser
+                      ? "border-brand-neon/70 bg-brand-secondary/90"
+                      : "border-brand-border"
+                  }`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {content}
+                </Wrapper>
+              );
+            })
+          ) : (
+            <div className="text-center py-16 text-brand-text-secondary bg-brand-secondary rounded-lg border border-brand-border space-y-2">
+              <FlameIcon className="w-10 h-10 mx-auto text-brand-text-secondary" />
+              <p className="font-semibold text-lg">No Active Streaks</p>
+              <p>
+                Be the first to start a streak in{" "}
+                <span className="font-semibold text-brand-text-primary">
+                  {selectedCategoryLabel}
+                </span>
+                !
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </section>
   );

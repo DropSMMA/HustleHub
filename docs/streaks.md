@@ -27,3 +27,19 @@ This document summarizes the centralized streak system that powers the Leaderboa
 
 - Feed cards (`ActivityCard`) display a flame badge when a streak summary is present.
 - The new `Leaderboards` dashboard view requests `/api/leaderboards`, renders category tabs, and highlights the current user when present.
+
+## Backfill Script
+
+If you need to rebuild streak data from historical posts, run the CLI backfill:
+
+```bash
+pnpm backfill:streaks          # writes streaks
+pnpm backfill:streaks -- --dry-run   # preview without changes
+```
+
+The script:
+
+1. Connects to MongoDB using the existing app connection helper.
+2. Loads every post with a category, sorted by `userId`, `type`, and `createdAt`.
+3. Recomputes `currentStreak`, `longestStreak`, and `lastActiveDate` for each `(user, category)` pair.
+4. Upserts the results into the `Streak` collection (skipped when `--dry-run` is set).

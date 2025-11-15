@@ -52,7 +52,7 @@ const DashboardController: React.FC = () => {
   const [viewingConnectionsOf, setViewingConnectionsOf] =
     useState<UserProfile | null>(null);
   const [challenges] = useState<Challenge[]>(MOCK_CHALLENGES);
-  const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
+  const [, setUserChallenges] = useState<UserChallenge[]>([]);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(
     null
   );
@@ -235,22 +235,6 @@ const DashboardController: React.FC = () => {
     void fetchLeaderboards();
   }, [currentView, fetchLeaderboards]);
 
-  const handleJoinChallenge = (challengeId: string) => {
-    setUserChallenges((prev) => {
-      if (prev.some((uc) => uc.challengeId === challengeId)) {
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          challengeId: challengeId,
-          progress: 0,
-          streak: 0,
-        },
-      ];
-    });
-  };
-
   const ensureRepliesLoaded = useCallback(
     (activityId: string | null) => {
       if (!activityId) {
@@ -426,9 +410,6 @@ const DashboardController: React.FC = () => {
     isResearchLoading,
     researchError,
     fetchResearchDirectory,
-    challenges,
-    userChallenges,
-    handleJoinChallenge,
     handleUpdateProfile,
     handleViewConnections,
     handleSendConnectRequest,

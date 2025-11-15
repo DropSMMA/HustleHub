@@ -104,7 +104,6 @@ export type View =
   | "insights"
   | "research"
   | "leaderboards"
-  | "challenges"
   | "profile"
   | "publicProfile"
   | "notifications"

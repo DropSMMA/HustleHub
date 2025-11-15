@@ -4,10 +4,9 @@ import React from "react";
 import { View } from "@/app/types";
 import { HomeIcon } from "./icons/HomeIcon";
 import { SparklesIcon } from "./icons/SparklesIcon";
-import { TrophyIcon } from "./icons/TrophyIcon";
 import { UserIcon } from "./icons/UserIcon";
 import { SearchIcon } from "./icons/SearchIcon";
-import { FlameIcon } from "./icons/FlameIcon";
+import { LeaderboardIcon } from "./icons/LeaderboardIcon";
 
 interface BottomNavProps {
   currentView: View;
@@ -63,15 +62,9 @@ const BottomNav: React.FC<BottomNavProps> = ({
         />
         <NavItem
           label="Leaders"
-          icon={<FlameIcon />}
+          icon={<LeaderboardIcon />}
           isActive={currentView === "leaderboards"}
           onClick={() => setCurrentView("leaderboards")}
-        />
-        <NavItem
-          label="Challenges"
-          icon={<TrophyIcon />}
-          isActive={currentView === "challenges"}
-          onClick={() => setCurrentView("challenges")}
         />
         <NavItem
           label="Profile"

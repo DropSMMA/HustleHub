@@ -8,6 +8,7 @@ import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
 import ActivityCard from "./ActivityCard";
 import ImageModal from "./icons/imagemodal";
+import { BoltIcon } from "./icons/BoltIcon";
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -463,11 +464,17 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               {isDescriptionExpanded ? "See less" : "See more"}
             </button>
           )}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {activity.type && (
-              <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">
-                {activity.type}
-              </span>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {(activity.type || (activity.streak && activity.streak.currentStreak > 1)) && (
+              <div className="inline-flex items-center gap-x-2 bg-brand-neon/10 text-brand-neon rounded-full text-xs font-semibold px-3 py-1">
+                {activity.streak && activity.streak.currentStreak > 0 && (
+                  <span className="inline-flex items-center gap-0.5 animate-pop">
+                    <BoltIcon className="h-4 w-4" />
+                    <span>{activity.streak.currentStreak}</span>
+                  </span>
+                )}
+                {activity.type && <span>{activity.type}</span>}
+              </div>
             )}
             {activity.stats && (
               <span className="text-xs font-semibold bg-brand-tertiary text-brand-text-secondary px-3 py-1 rounded-full">

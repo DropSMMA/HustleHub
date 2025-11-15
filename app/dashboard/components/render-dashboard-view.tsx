@@ -1,7 +1,6 @@
 import React from "react";
 import Feed from "@/app/dashboard/components/Feed";
 import WeeklyInsights from "@/app/dashboard/components/Dashboard";
-import Challenges from "@/app/dashboard/components/Challenges";
 import Profile from "@/app/dashboard/components/Profile";
 import PublicProfile from "@/app/dashboard/components/PublicProfile";
 import Notifications from "@/app/dashboard/components/Notifications";
@@ -13,9 +12,7 @@ import Leaderboards from "@/app/dashboard/components/Leaderboards";
 import {
   Activity,
   CategoryLeaderboard,
-  Challenge,
   Notification,
-  UserChallenge,
   UserProfile,
   View,
 } from "@/app/types";
@@ -53,9 +50,6 @@ export interface DashboardRenderParams {
   isResearchLoading: boolean;
   researchError: string | null;
   fetchResearchDirectory: (options?: { force?: boolean }) => Promise<void>;
-  challenges: Challenge[];
-  userChallenges: UserChallenge[];
-  handleJoinChallenge: (challengeId: string) => void;
   handleUpdateProfile: (profile: UserProfile) => void;
   handleViewConnections: (username: string) => void;
   handleSendConnectRequest: (username: string) => Promise<void>;
@@ -111,9 +105,6 @@ const renderDashboardView = ({
   isResearchLoading,
   researchError,
   fetchResearchDirectory,
-  challenges,
-  userChallenges,
-  handleJoinChallenge,
   handleUpdateProfile,
   handleViewConnections,
   handleSendConnectRequest,
@@ -229,14 +220,6 @@ const renderDashboardView = ({
         />
       );
     }
-    case "challenges":
-      return (
-        <Challenges
-          challenges={challenges}
-          userChallenges={userChallenges}
-          onJoinChallenge={handleJoinChallenge}
-        />
-      );
     case "profile":
       if (!userProfile) {
         return (
@@ -381,6 +364,7 @@ const renderDashboardView = ({
           error={leaderboardsError}
           onRefresh={refreshLeaderboards}
           currentUser={userProfile}
+          onViewProfile={handleViewProfile}
         />
       );
     default:

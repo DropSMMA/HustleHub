@@ -134,10 +134,44 @@ export const useDashboardNotifications = () => {
     }
   }, [notifications]);
 
+  const markNotificationsAsRead = useCallback(
+    async (ids: string | string[]) => {
+      const idsArray = (Array.isArray(ids) ? ids : [ids])
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
+
+      if (idsArray.length === 0) {
+        return;
+      }
+
+      const idsSet = new Set(idsArray);
+      const previousNotifications = notifications.map((notification) => ({
+        ...notification,
+      }));
+
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          idsSet.has(notification.id)
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+
+      try {
+        await apiClient.patch("/notifications", { ids: idsArray });
+      } catch (error) {
+        console.error("Failed to mark notifications as read", error);
+        setNotifications(previousNotifications);
+      }
+    },
+    [notifications]
+  );
+
   return {
     notifications,
     setNotifications,
     refreshNotifications,
     handleClearNotifications,
+    markNotificationsAsRead,
   };
 };

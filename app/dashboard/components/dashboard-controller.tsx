@@ -72,6 +72,7 @@ const DashboardController: React.FC = () => {
     setNotifications,
     refreshNotifications,
     handleClearNotifications,
+    markNotificationsAsRead,
   } = useDashboardNotifications();
 
   const {
@@ -316,6 +317,13 @@ const DashboardController: React.FC = () => {
     handleViewActivityDetail(postId);
   };
 
+  const handleNotificationSeen = useCallback(
+    (notificationId: string) => {
+      void markNotificationsAsRead(notificationId);
+    },
+    [markNotificationsAsRead]
+  );
+
   const handleClearHighlightedPost = () => {
     setHighlightedPostId(null);
   };
@@ -417,6 +425,7 @@ const DashboardController: React.FC = () => {
     handleClosePublicProfile,
     notifications,
     handleClearNotifications,
+    handleNotificationSeen,
     handleAcceptConnectRequest,
     handleDeclineConnectRequest,
     handleViewActivity,

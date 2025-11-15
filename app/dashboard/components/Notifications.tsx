@@ -19,6 +19,7 @@ interface NotificationsProps {
   ) => void;
   onViewProfile: (username: string) => Promise<void> | void;
   onViewActivity: (postId: string) => void;
+  onNotificationSeen: (notificationId: string) => Promise<void> | void;
 }
 
 const formatNotificationTimestamp = (raw: string) => {
@@ -95,7 +96,20 @@ const Notifications: React.FC<NotificationsProps> = ({
   onDeclineConnectRequest,
   onViewProfile,
   onViewActivity,
+  onNotificationSeen,
 }) => {
+  const handleNotificationInteraction = (
+    notification: Notification,
+    options?: { openActivity?: boolean }
+  ) => {
+    if (!notification.read) {
+      void onNotificationSeen(notification.id);
+    }
+    if (options?.openActivity && notification.postId) {
+      onViewActivity(notification.postId);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 max-w-lg space-y-4 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -128,6 +142,24 @@ const Notifications: React.FC<NotificationsProps> = ({
                     ? "border-l-4 border-brand-neon"
                     : "opacity-70"
                 } p-4`}
+                role={notification.postId ? "button" : undefined}
+                tabIndex={notification.postId ? 0 : undefined}
+                onClick={() =>
+                  handleNotificationInteraction(notification, {
+                    openActivity: Boolean(notification.postId),
+                  })
+                }
+                onKeyDown={(event) => {
+                  if (!notification.postId) {
+                    return;
+                  }
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleNotificationInteraction(notification, {
+                      openActivity: true,
+                    });
+                  }
+                }}
               >
                 <div
                   className={`flex-shrink-0 mt-1 ${
@@ -141,9 +173,6 @@ const Notifications: React.FC<NotificationsProps> = ({
                     className={`w-full text-left ${
                       notification.postId ? "cursor-pointer" : ""
                     }`}
-                    onClick={() =>
-                      notification.postId && onViewActivity(notification.postId)
-                    }
                   >
                     <div className="flex items-start space-x-2">
                       <button
@@ -188,23 +217,27 @@ const Notifications: React.FC<NotificationsProps> = ({
                     !notification.read && (
                       <div className="flex space-x-2 mt-2">
                         <button
-                          onClick={() =>
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void onNotificationSeen(notification.id);
                             onAcceptConnectRequest(
                               notification.id,
                               notification.actor.username
-                            )
-                          }
+                            );
+                          }}
                           className="bg-brand-neon text-brand-primary text-xs font-bold py-1 px-3 rounded-md hover:bg-green-400 transition-colors"
                         >
                           Accept
                         </button>
                         <button
-                          onClick={() =>
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void onNotificationSeen(notification.id);
                             onDeclineConnectRequest(
                               notification.id,
                               notification.actor.username
-                            )
-                          }
+                            );
+                          }}
                           className="bg-brand-tertiary text-gray-300 text-xs font-bold py-1 px-3 rounded-md hover:bg-opacity-80 transition-colors"
                         >
                           Decline

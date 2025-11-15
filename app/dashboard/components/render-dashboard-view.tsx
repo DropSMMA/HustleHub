@@ -69,6 +69,7 @@ export interface DashboardRenderParams {
   handleClosePublicProfile: () => void;
   notifications: Notification[];
   handleClearNotifications: () => Promise<void> | void;
+  handleNotificationSeen: (notificationId: string) => Promise<void> | void;
   handleAcceptConnectRequest: (
     notificationId: string,
     fromUsername: string
@@ -122,6 +123,7 @@ const renderDashboardView = ({
   handleClosePublicProfile,
   notifications,
   handleClearNotifications,
+  handleNotificationSeen,
   handleAcceptConnectRequest,
   handleDeclineConnectRequest,
   handleViewActivity,
@@ -327,6 +329,7 @@ const renderDashboardView = ({
           onDeclineConnectRequest={handleDeclineConnectRequest}
           onViewProfile={handleViewProfile}
           onViewActivity={handleViewActivity}
+          onNotificationSeen={handleNotificationSeen}
         />
       );
     case "connections":

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ActivityType,
   CategoryLeaderboard,
@@ -63,6 +63,7 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<ActivityType>(
     categories[0]
   );
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!categories.includes(selectedCategory) && categories.length > 0) {
@@ -91,7 +92,7 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
   return (
     <section className="container mx-auto px-4 max-w-2xl space-y-6 animate-fade-in">
       <div className="flex flex-col items-center gap-4 text-center">
-        <h2 className="text-3xl font-bold font-display">Leaderboards</h2>
+        <h2 className="text-3xl font-bold">Leaderboards</h2>
       </div>
 
       <div className="flex flex-wrap gap-2 justify-center px-2">
@@ -99,12 +100,19 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
           <button
             key={category}
             type="button"
-            onClick={() => setSelectedCategory(category)}
+            onClick={() =>
+              startTransition(() => {
+                setSelectedCategory(category);
+              })
+            }
             className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 whitespace-nowrap ${
               selectedCategory === category
                 ? "bg-brand-neon text-brand-primary"
                 : "bg-brand-secondary text-brand-text-secondary hover:bg-brand-tertiary"
+            } ${
+              isPending && selectedCategory === category ? "opacity-60" : ""
             }`}
+            disabled={isPending && selectedCategory === category}
           >
             {categoryLabels[category]}
           </button>
@@ -119,7 +127,9 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
 
       {error && !isLoading && (
         <div className="bg-red-500/10 border border-red-500/40 rounded-2xl p-6 space-y-3 text-center">
-          <p className="text-red-200 font-semibold">Unable to load leaderboards</p>
+          <p className="text-red-200 font-semibold">
+            Unable to load leaderboards
+          </p>
           <p className="text-sm text-red-200/80">{error}</p>
           <button
             type="button"
@@ -132,7 +142,10 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
       )}
 
       {!isLoading && !error && (
-        <div className="space-y-3">
+        <div
+          className={`space-y-3 ${isPending ? "opacity-80" : ""}`}
+          aria-busy={isPending}
+        >
           {rankedEntries.length > 0 ? (
             rankedEntries.map((entry, index) => {
               const usernameLabel = entry.user.username
@@ -145,7 +158,11 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
 
               const content = (
                 <>
-                  <div className={`w-8 text-center text-xl font-bold ${getRankColor(index)}`}>
+                  <div
+                    className={`w-8 text-center text-xl font-bold ${getRankColor(
+                      index
+                    )}`}
+                  >
                     {index + 1}
                   </div>
                   <div className="flex items-center space-x-3 flex-grow min-w-0">
@@ -219,4 +236,3 @@ const Leaderboards: React.FC<LeaderboardsProps> = ({
 };
 
 export default Leaderboards;
-

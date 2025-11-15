@@ -319,6 +319,31 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     [activities, activity.id]
   );
 
+  const isStreakActive = useMemo(() => {
+    const detailStreak = activity.streak;
+    if (
+      !detailStreak ||
+      detailStreak.currentStreak <= 1 ||
+      !detailStreak.lastActiveDate
+    ) {
+      return false;
+    }
+    const today = new Date();
+    const todayUTC = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    );
+    const last = new Date(detailStreak.lastActiveDate);
+    if (Number.isNaN(last.getTime())) {
+      return false;
+    }
+    const lastUTC = new Date(
+      Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate())
+    );
+    const diff =
+      (todayUTC.getTime() - lastUTC.getTime()) / (24 * 60 * 60 * 1000);
+    return diff <= 1;
+  }, [activity.streak]);
+
   useEffect(() => {
     if (!highlightedReplyId) {
       return;
@@ -475,10 +500,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             </button>
           )}
           <div className="flex flex-wrap items-center gap-2 mt-3">
-            {(activity.type ||
-              (activity.streak && activity.streak.currentStreak > 1)) && (
+            {(activity.type || isStreakActive) && (
               <div className="inline-flex items-center gap-x-2 bg-brand-neon/10 text-brand-neon rounded-full text-xs font-semibold px-3 py-1">
-                {activity.streak && activity.streak.currentStreak > 1 && (
+                {isStreakActive && activity.streak && (
                   <span className="inline-flex items-center gap-0.5 animate-pop">
                     <BoltIcon className="h-4 w-4" />
                     <span>{activity.streak.currentStreak}</span>

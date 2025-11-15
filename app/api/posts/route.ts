@@ -7,11 +7,7 @@ import User from "@/models/User";
 import Post from "@/models/Post";
 import type { IPost } from "@/models/Post";
 import Notification from "@/models/Notification";
-import {
-  ActivityType,
-  NotificationType,
-  type MentionType,
-} from "@/app/types";
+import { ActivityType, NotificationType, type MentionType } from "@/app/types";
 import { serializePosts, toStringId, type OwnerInfo } from "./utils";
 import {
   buildStreakKey,
@@ -550,8 +546,15 @@ export async function POST(request: Request) {
 
     let streakSummary = null;
     if (resolvedType) {
+      const streakUserId =
+        user._id instanceof mongoose.Types.ObjectId
+          ? user._id
+          : new mongoose.Types.ObjectId(
+              toStringId(user._id) ?? String(user._id ?? userIdString)
+            );
+
       streakSummary = await recordActivityStreak({
-        userId: user._id,
+        userId: streakUserId,
         category: resolvedType,
         activityDate: post.createdAt,
       });

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Activity, ActivityMention, UserProfile } from "@/app/types";
 import { BackIcon } from "./icons/BackIcon";
 import { ThumbsUpIcon } from "./icons/ThumbsUpIcon";
@@ -243,7 +249,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
 
             const projectCandidate = posterProfile?.projects.find((project) => {
               const normalizedToken = mentionToken.toLowerCase();
-              const compactName = project.name.replace(/\s+/g, "").toLowerCase();
+              const compactName = project.name
+                .replace(/\s+/g, "")
+                .toLowerCase();
               const hyphenName = project.name
                 .replace(/\s+/g, "-")
                 .toLowerCase();
@@ -418,7 +426,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               </p>
               <p
                 className="text-xs text-brand-text-secondary flex items-center gap-2"
-                {...(exactDateTimeLabel ? { title: exactDateTimeLabel } : undefined)}
+                {...(exactDateTimeLabel
+                  ? { title: exactDateTimeLabel }
+                  : undefined)}
               >
                 <span>{activity.timestamp}</span>
                 {exactTimeLabel && (
@@ -465,9 +475,10 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             </button>
           )}
           <div className="flex flex-wrap items-center gap-2 mt-3">
-            {(activity.type || (activity.streak && activity.streak.currentStreak > 1)) && (
+            {(activity.type ||
+              (activity.streak && activity.streak.currentStreak > 1)) && (
               <div className="inline-flex items-center gap-x-2 bg-brand-neon/10 text-brand-neon rounded-full text-xs font-semibold px-3 py-1">
-                {activity.streak && activity.streak.currentStreak > 0 && (
+                {activity.streak && activity.streak.currentStreak > 1 && (
                   <span className="inline-flex items-center gap-0.5 animate-pop">
                     <BoltIcon className="h-4 w-4" />
                     <span>{activity.streak.currentStreak}</span>

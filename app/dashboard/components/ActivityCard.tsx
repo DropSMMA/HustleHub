@@ -482,7 +482,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
             <div className="flex flex-wrap items-center gap-2 mt-3">
               {(type || (streak && streak.currentStreak > 1)) && (
                 <div className="inline-flex items-center gap-x-2 bg-brand-neon/10 text-brand-neon rounded-full text-xs font-semibold px-3 py-1">
-                  {streak && streak.currentStreak > 0 && (
+                  {streak && streak.currentStreak > 1 && (
                     <span className="inline-flex items-center gap-0.5 animate-pop">
                       <BoltIcon className="h-4 w-4" />
                       <span>{streak.currentStreak}</span>

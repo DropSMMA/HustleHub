@@ -15,6 +15,16 @@ const normalizeDate = (date: Date): Date => {
   return normalized;
 };
 
+const isStreakActive = (lastActiveDate?: Date | null): boolean => {
+  if (!lastActiveDate) {
+    return false;
+  }
+  const today = normalizeDate(new Date());
+  const lastActive = normalizeDate(new Date(lastActiveDate));
+  const diff = Math.floor((today.getTime() - lastActive.getTime()) / DAY_IN_MS);
+  return diff <= 1;
+};
+
 const toObjectId = (value: Types.ObjectId | string): Types.ObjectId => {
   if (value instanceof mongoose.Types.ObjectId) {
     return value;
@@ -129,7 +139,10 @@ export const getStreakSummaries = async (
     return new Map();
   }
 
-  const uniqueKeys = new Map<string, { userId: string; category: ActivityType }>();
+  const uniqueKeys = new Map<
+    string,
+    { userId: string; category: ActivityType }
+  >();
 
   targets.forEach(({ userId, category }) => {
     if (!userId || !category) {
@@ -152,7 +165,10 @@ export const getStreakSummaries = async (
   const summaryMap = new Map<string, StreakSummary>();
 
   docs.forEach((doc) => {
-    summaryMap.set(streakKey(doc.userId.toString(), doc.category), toSummary(doc));
+    summaryMap.set(
+      streakKey(doc.userId.toString(), doc.category),
+      toSummary(doc)
+    );
   });
 
   return summaryMap;
@@ -173,7 +189,7 @@ export const getCategoryLeaderboards = async ({
     sanitizedCategories.map(async (category) => ({
       category,
       docs: await Streak.find({ category })
-        .sort({ longestStreak: -1, currentStreak: -1, updatedAt: -1 })
+        .sort({ currentStreak: -1, longestStreak: -1, updatedAt: -1 })
         .limit(sanitizedLimit)
         .lean(),
     }))
@@ -204,7 +220,9 @@ export const getCategoryLeaderboards = async ({
   });
 
   return categoryDocs.map(({ category, docs }) => {
-    const entries: LeaderboardEntry[] = docs.map((doc, index) => {
+    const activeDocs = docs.filter((doc) => isStreakActive(doc.lastActiveDate));
+
+    const entries: LeaderboardEntry[] = activeDocs.map((doc, index) => {
       const fallbackUser: LeaderboardUser = {
         id: doc.userId.toString(),
         name: "Hustler",
@@ -213,7 +231,7 @@ export const getCategoryLeaderboards = async ({
       };
 
       return {
-        ...toSummary(doc as IStreak),
+        ...toSummary(doc as unknown as IStreak),
         user: userMap.get(doc.userId.toString()) ?? fallbackUser,
         rank: index + 1,
       };
@@ -228,4 +246,3 @@ export const getCategoryLeaderboards = async ({
 };
 
 export const buildStreakKey = streakKey;
-

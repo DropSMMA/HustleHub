@@ -240,8 +240,8 @@ export async function POST(request: Request) {
     target.incomingRequests = Array.from(targetIncoming);
     target.outgoingRequests = Array.from(targetOutgoing);
 
-    await viewer.save();
-    await target.save();
+    await viewer.save({ validateBeforeSave: false });
+    await target.save({ validateBeforeSave: false });
 
     return NextResponse.json(
       { status },
@@ -322,8 +322,8 @@ export async function PATCH(request: Request) {
     target.incomingRequests = Array.from(targetIncoming);
     target.outgoingRequests = Array.from(targetOutgoing);
 
-    await viewer.save();
-    await target.save();
+    await viewer.save({ validateBeforeSave: false });
+    await target.save({ validateBeforeSave: false });
 
     return NextResponse.json({ status: payload.action }, { status: 200 });
   } catch (error) {

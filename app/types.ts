@@ -14,6 +14,17 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export type MentionType = "connection" | "startup";
+
+export interface ActivityMention {
+  id: string;
+  type: MentionType;
+  handle: string;
+  label: string;
+  username?: string;
+  url?: string;
+}
+
 export interface Activity {
   id: string;
   user: string;
@@ -28,12 +39,44 @@ export interface Activity {
   likedBy?: string[];
   comments?: Comment[];
   timestamp: string;
+  timestampExact?: string;
   replyingTo?: {
     activityId: string;
     username: string;
     name?: string | null;
   };
   replyCount?: number;
+  mentions?: ActivityMention[];
+  streak?: ActivityStreak;
+}
+
+export interface ActivityStreak {
+  category: ActivityType;
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate?: string | null;
+}
+
+export interface LeaderboardUserSummary {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string;
+}
+
+export interface LeaderboardEntry {
+  category: ActivityType;
+  rank: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate?: string | null;
+  user: LeaderboardUserSummary;
+}
+
+export interface CategoryLeaderboard {
+  category: ActivityType;
+  entries: LeaderboardEntry[];
+  generatedAt: string;
 }
 
 export interface Challenge {
@@ -60,7 +103,7 @@ export type View =
   | "log"
   | "insights"
   | "research"
-  | "challenges"
+  | "leaderboards"
   | "profile"
   | "publicProfile"
   | "notifications"
@@ -75,12 +118,17 @@ export enum FocusArea {
   Networking = "🌍 Networking / Community",
 }
 
+export interface ProjectLink {
+  name: string;
+  url?: string;
+}
+
 export interface UserProfile {
   username: string;
   name: string;
   avatar: string;
   tagline: string;
-  projects: string;
+  projects: ProjectLink[];
   focuses: FocusArea[];
   connections: string[];
   socials?: {
@@ -95,6 +143,7 @@ export interface UserProfile {
 
 export enum NotificationType {
   Comment = "comment",
+  Mention = "mention",
   Kudo = "kudo",
   Challenge = "challenge",
   System = "system",
@@ -108,6 +157,7 @@ export interface Notification {
   timestamp: string;
   read: boolean;
   postId?: string;
+  metadata?: Record<string, unknown>;
   actor: {
     name: string;
     avatar: string;

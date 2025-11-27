@@ -29,4 +29,3 @@ export const getS3Client = () => {
 };
 
 export default getS3Client;
-

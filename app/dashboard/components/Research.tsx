@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { UserProfile } from "@/app/types";
 import { SearchIcon } from "./icons/SearchIcon";
+import LoadingIndicator from "./LoadingIndicator";
 
 interface ResearchProps {
   allUsers: UserProfile[];
@@ -37,7 +38,7 @@ const Research: React.FC<ResearchProps> = ({
     if (isLoading) {
       return (
         <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-neon"></div>
+          <LoadingIndicator label="Searching hustlers…" size="lg" />
         </div>
       );
     }

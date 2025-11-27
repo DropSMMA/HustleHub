@@ -6,6 +6,10 @@ import OnboardingWelcome from "./OnboardingWelcome";
 import OnboardingStep1 from "./OnboardingStep1";
 import OnboardingStep2 from "./OnboardingStep2";
 import OnboardingFocus from "./OnboardingFocus";
+import {
+  normalizeProjectLinks,
+  sanitizeProjectLinksForPersistence,
+} from "@/libs/projects";
 
 interface OnboardingProps {
   onComplete: (profile: UserProfile) => void;
@@ -23,7 +27,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     avatar:
       "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
     tagline: "",
-    projects: "",
+    projects: [],
     connections: [],
     socials: {},
   });
@@ -72,12 +76,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         username: finalProfile.username,
         avatar: finalProfile.avatar,
         tagline: finalProfile.tagline,
-        projects: finalProfile.projects
-          ? finalProfile.projects
-              .split(",")
-              .map((project) => project.trim())
-              .filter(Boolean)
-          : [],
+        projects: sanitizeProjectLinksForPersistence(finalProfile.projects),
         focuses: finalProfile.focuses,
         socials: finalProfile.socials,
       };
@@ -117,7 +116,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         name: user.name,
         avatar: user.image ?? finalProfile.avatar,
         tagline: user.tagline ?? "",
-        projects: (user.projects ?? []).join(", "),
+        projects: normalizeProjectLinks(user.projects),
         focuses: user.focuses ?? finalProfile.focuses,
         connections: user.connections ?? [],
         socials: user.socials ?? finalProfile.socials,

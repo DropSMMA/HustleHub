@@ -3,6 +3,7 @@ import { auth } from "@/libs/next-auth";
 import connectMongo from "@/libs/mongoose";
 import User from "@/models/User";
 import { FocusArea, UserProfile } from "@/app/types";
+import { normalizeProjectLinks } from "@/libs/projects";
 
 const DEFAULT_AVATAR =
   "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
@@ -47,26 +48,8 @@ const sanitizeSocials = (
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
-const normalizeProjects = (projects: unknown): string => {
-  if (Array.isArray(projects)) {
-    return projects
-      .map((entry) =>
-        typeof entry === "string" ? entry.trim() : String(entry ?? "")
-      )
-      .filter((entry) => entry.length > 0)
-      .join(", ");
-  }
-
-  if (typeof projects === "string") {
-    return projects
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0)
-      .join(", ");
-  }
-
-  return "";
-};
+const normalizeProjects = (projects: unknown) =>
+  normalizeProjectLinks(projects);
 
 const mapUserToProfile = (user: any): UserProfile | null => {
   const username =

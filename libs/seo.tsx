@@ -57,7 +57,6 @@ export const getSEOTags = ({
       card: "summary_large_image",
       creator: "@marc_louvion",
     },
-    themeColor: config.colors.main,
     appleWebApp: {
       capable: true,
       title: config.appName,

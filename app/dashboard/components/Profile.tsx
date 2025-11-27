@@ -1,6 +1,18 @@
-import React, { useState, useEffect, ChangeEvent, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  ChangeEvent,
+  useRef,
+  useMemo,
+} from "react";
 import { toast } from "react-hot-toast";
-import { UserProfile, FocusArea, Activity, View } from "@/app/types";
+import {
+  UserProfile,
+  FocusArea,
+  Activity,
+  View,
+  ProjectLink,
+} from "@/app/types";
 import apiClient from "@/libs/api";
 import { optimizeImageFile } from "@/app/dashboard/lib/image-optimizer";
 import { PenIcon } from "./icons/PenIcon";
@@ -11,7 +23,12 @@ import { GithubIcon } from "./icons/GithubIcon";
 import { LinkedInIcon } from "./icons/LinkedInIcon";
 import { LinkIcon } from "./icons/LinkIcon";
 import HustleBalanceChart from "./HustleBalanceChart";
+import ProjectEditorList from "./projects/ProjectEditorList";
 import { SettingsIcon } from "./icons/SettingsIcon";
+import {
+  normalizeProjectLinks,
+  sanitizeProjectLinksForPersistence,
+} from "@/libs/projects";
 
 interface ProfileProps {
   userProfile: UserProfile | null;
@@ -25,6 +42,7 @@ interface ProfileProps {
   setCurrentView: (view: View) => void;
   onViewActivityDetail?: (activityId: string) => void;
   allActivities?: Activity[];
+  allUsers?: Record<string, UserProfile>;
 }
 
 const StatCard: React.FC<{ value: string; label: string }> = ({
@@ -49,12 +67,17 @@ interface ApiUserSocials {
   website?: string;
 }
 
+interface ApiUserProject {
+  name?: string | null;
+  url?: string | null;
+}
+
 interface ApiUser {
   username: string;
   name?: string;
   image?: string;
   tagline?: string;
-  projects?: string[];
+  projects?: ApiUserProject[] | string[] | string | null;
   focuses?: FocusArea[];
   connections?: string[];
   socials?: ApiUserSocials;
@@ -65,7 +88,7 @@ const mapApiUserToProfile = (user: ApiUser): UserProfile => ({
   name: user.name ?? "",
   avatar: user.image ?? FALLBACK_AVATAR,
   tagline: user.tagline ?? "",
-  projects: Array.isArray(user.projects) ? user.projects.join(", ") : "",
+  projects: normalizeProjectLinks(user.projects),
   focuses: user.focuses ?? [],
   connections: user.connections ?? [],
   socials: user.socials,
@@ -83,6 +106,7 @@ const Profile: React.FC<ProfileProps> = ({
   setCurrentView,
   onViewActivityDetail,
   allActivities,
+  allUsers,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(
@@ -136,6 +160,46 @@ const Profile: React.FC<ProfileProps> = ({
         },
       });
     }
+  };
+
+  const handleProjectChange = (
+    index: number,
+    field: keyof ProjectLink,
+    value: string
+  ) => {
+    if (!editedProfile) {
+      return;
+    }
+
+    setEditedProfile({
+      ...editedProfile,
+      projects: editedProfile.projects.map((project, projectIndex) =>
+        projectIndex === index ? { ...project, [field]: value } : project
+      ),
+    });
+  };
+
+  const handleAddProject = () => {
+    if (!editedProfile) {
+      return;
+    }
+    setEditedProfile({
+      ...editedProfile,
+      projects: [...editedProfile.projects, { name: "", url: "" }],
+    });
+  };
+
+  const handleRemoveProject = (index: number) => {
+    if (!editedProfile) {
+      return;
+    }
+
+    setEditedProfile({
+      ...editedProfile,
+      projects: editedProfile.projects.filter(
+        (_, projectIndex) => projectIndex !== index
+      ),
+    });
   };
 
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -205,12 +269,9 @@ const Profile: React.FC<ProfileProps> = ({
       return;
     }
 
-    const projectsArray = editedProfile.projects
-      ? editedProfile.projects
-          .split(",")
-          .map((project) => project.trim())
-          .filter(Boolean)
-      : [];
+    const sanitizedProjects = sanitizeProjectLinksForPersistence(
+      editedProfile.projects
+    );
 
     const socialsPayload = editedProfile.socials
       ? Object.entries(editedProfile.socials).reduce<Record<string, string>>(
@@ -279,7 +340,7 @@ const Profile: React.FC<ProfileProps> = ({
         tagline: editedProfile.tagline?.trim() ?? "",
         avatar: avatarUrl,
         focuses: editedProfile.focuses,
-        projects: projectsArray,
+        projects: sanitizedProjects,
         socials: socialsPayload,
       };
 
@@ -289,7 +350,13 @@ const Profile: React.FC<ProfileProps> = ({
 
       const normalizedProfile = mapApiUserToProfile(user);
       onUpdateProfile(normalizedProfile);
-      setEditedProfile(normalizedProfile);
+      setEditedProfile({
+        ...normalizedProfile,
+        projects:
+          sanitizedProjects.length > 0
+            ? sanitizedProjects
+            : normalizeProjectLinks(normalizedProfile.projects),
+      });
       setIsEditing(false);
       toast.success("Profile updated.");
       if (avatarObjectUrlRef.current) {
@@ -462,116 +529,140 @@ const Profile: React.FC<ProfileProps> = ({
 
       <HustleBalanceChart activities={activities} />
 
-      <div className="bg-brand-secondary rounded-xl p-4">
-        <h3 className="font-bold text-lg mb-3">My Focus Areas</h3>
+      <div className="bg-brand-secondary border border-brand-border rounded-xl p-4">
+        <h3 className="font-bold text-lg mb-3">Focus Areas</h3>
         {isEditing ? (
-          <div className="grid grid-cols-1 gap-3">
-            {allFocuses.map((focus) => (
-              <button
-                key={focus}
-                type="button"
-                onClick={() => toggleFocus(focus)}
-                className={`p-3 rounded-lg font-semibold text-left transition-all duration-200 border-2 ${
-                  editedProfile.focuses.includes(focus)
-                    ? "bg-brand-neon/10 border-brand-neon text-brand-neon"
-                    : "bg-brand-tertiary border-transparent hover:border-gray-500"
-                }`}
-              >
-                {focus}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {allFocuses.map((focus) => {
+              const isSelected = editedProfile.focuses.includes(focus);
+              return (
+                <button
+                  key={focus}
+                  type="button"
+                  onClick={() => toggleFocus(focus)}
+                  className={`text-xs font-semibold px-3 py-1 rounded-full transition-all duration-200 border-2 ${
+                    isSelected
+                      ? "bg-brand-neon/10 border-brand-neon text-brand-neon"
+                      : "bg-brand-tertiary border-transparent hover:border-brand-border text-brand-text-secondary"
+                  }`}
+                >
+                  {focus}
+                </button>
+              );
+            })}
           </div>
         ) : (
-          userProfile.focuses &&
-          userProfile.focuses.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {userProfile.focuses.map((focus) => (
+          <div className="flex flex-wrap gap-2">
+            {userProfile.focuses.length > 0 ? (
+              userProfile.focuses.map((focus) => (
                 <span
                   key={focus}
                   className="bg-brand-tertiary text-brand-neon text-xs font-semibold px-3 py-1 rounded-full"
                 >
                   {focus}
                 </span>
-              ))}
-            </div>
-          )
+              ))
+            ) : (
+              <p className="text-sm text-brand-text-secondary">
+                No focus areas selected yet.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
-      <div className="bg-brand-secondary rounded-xl p-4">
-        <h3 className="font-bold text-lg mb-2">My Projects</h3>
+      <div className="bg-brand-secondary border border-brand-border rounded-xl p-4">
+        <h3 className="font-bold text-lg mb-3">Projects</h3>
         {isEditing ? (
-          <input
-            type="text"
-            name="projects"
-            value={editedProfile.projects}
-            onChange={handleChange}
-            placeholder="Comma-separated projects"
-            className="w-full mt-1 bg-brand-tertiary border-brand-tertiary rounded-md p-3 focus:ring-brand-neon focus:border-brand-neon transition-colors"
+          <ProjectEditorList
+            projects={editedProfile.projects}
+            onProjectChange={handleProjectChange}
+            onAddProject={handleAddProject}
+            onRemoveProject={handleRemoveProject}
+            helperText="Share the product, idea, or experiment you're working on. Links are optional."
           />
         ) : (
-          userProfile.projects && (
-            <p className="text-gray-300">{userProfile.projects}</p>
-          )
+          <div className="flex flex-wrap gap-2">
+            {userProfile.projects.length > 0 ? (
+              userProfile.projects.map((project, index) => {
+                const projectUrl = project.url?.trim();
+                return projectUrl ? (
+                  <a
+                    key={`${project.name}-${index}`}
+                    href={projectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-brand-tertiary text-brand-neon text-xs font-semibold px-3 py-1 rounded-full hover:bg-brand-border transition-colors inline-flex items-center gap-1.5"
+                  >
+                    {project.name}
+                    <span className="inline-flex scale-75">
+                      <LinkIcon />
+                    </span>
+                  </a>
+                ) : (
+                  <span
+                    key={`${project.name}-${index}`}
+                    className="bg-brand-tertiary text-brand-text-secondary text-xs font-semibold px-3 py-1 rounded-full"
+                  >
+                    {project.name}
+                  </span>
+                );
+              })
+            ) : (
+              <p className="text-sm text-brand-text-secondary">
+                No projects listed.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
       {isEditing && (
-        <div className="bg-brand-secondary rounded-xl p-4">
-          <h3 className="font-bold text-lg mb-3">Social Links</h3>
-          <div className="space-y-3">
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
-                <TwitterIcon />
-              </span>
-              <input
-                type="text"
-                name="twitter"
-                value={editedProfile.socials?.twitter || ""}
-                onChange={handleSocialChange}
-                placeholder="Twitter URL"
-                className="w-full bg-brand-tertiary border-brand-tertiary rounded-md p-3 pl-10 focus:ring-brand-neon focus:border-brand-neon transition-colors"
-              />
-            </div>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
-                <GithubIcon />
-              </span>
-              <input
-                type="text"
-                name="github"
-                value={editedProfile.socials?.github || ""}
-                onChange={handleSocialChange}
-                placeholder="GitHub URL"
-                className="w-full bg-brand-tertiary border-brand-tertiary rounded-md p-3 pl-10 focus:ring-brand-neon focus:border-brand-neon transition-colors"
-              />
-            </div>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
-                <LinkedInIcon />
-              </span>
-              <input
-                type="text"
-                name="linkedin"
-                value={editedProfile.socials?.linkedin || ""}
-                onChange={handleSocialChange}
-                placeholder="LinkedIn URL"
-                className="w-full bg-brand-tertiary border-brand-tertiary rounded-md p-3 pl-10 focus:ring-brand-neon focus:border-brand-neon transition-colors"
-              />
-            </div>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
-                <LinkIcon />
-              </span>
-              <input
-                type="text"
-                name="website"
-                value={editedProfile.socials?.website || ""}
-                onChange={handleSocialChange}
-                placeholder="Portfolio/Website URL"
-                className="w-full bg-brand-tertiary border-brand-tertiary rounded-md p-3 pl-10 focus:ring-brand-neon focus:border-brand-neon transition-colors"
-              />
-            </div>
+        <div className="bg-brand-secondary border border-brand-border rounded-xl p-4 space-y-3">
+          <h3 className="font-bold text-lg">Social Links</h3>
+          <div className="flex items-center space-x-2">
+            <TwitterIcon />
+            <input
+              type="text"
+              name="twitter"
+              value={editedProfile.socials?.twitter || ""}
+              onChange={handleSocialChange}
+              placeholder="Twitter URL"
+              className="w-full bg-brand-tertiary border border-brand-border rounded-md p-2 focus:ring-2 focus:ring-brand-neon focus:border-transparent transition-colors text-sm"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <GithubIcon />
+            <input
+              type="text"
+              name="github"
+              value={editedProfile.socials?.github || ""}
+              onChange={handleSocialChange}
+              placeholder="GitHub URL"
+              className="w-full bg-brand-tertiary border border-brand-border rounded-md p-2 focus:ring-2 focus:ring-brand-neon focus:border-transparent transition-colors text-sm"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <LinkedInIcon />
+            <input
+              type="text"
+              name="linkedin"
+              value={editedProfile.socials?.linkedin || ""}
+              onChange={handleSocialChange}
+              placeholder="LinkedIn URL"
+              className="w-full bg-brand-tertiary border border-brand-border rounded-md p-2 focus:ring-2 focus:ring-brand-neon focus:border-transparent transition-colors text-sm"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <LinkIcon />
+            <input
+              type="text"
+              name="website"
+              value={editedProfile.socials?.website || ""}
+              onChange={handleSocialChange}
+              placeholder="Website/Portfolio URL"
+              className="w-full bg-brand-tertiary border border-brand-border rounded-md p-2 focus:ring-2 focus:ring-brand-neon focus:border-transparent transition-colors text-sm"
+            />
           </div>
         </div>
       )}
@@ -597,6 +688,7 @@ const Profile: React.FC<ProfileProps> = ({
                 replyCount={
                   activity.replyCount ?? replyCounts.get(activity.id) ?? 0
                 }
+                allUsers={allUsers}
               />
             ))}
           </div>
@@ -609,17 +701,17 @@ const Profile: React.FC<ProfileProps> = ({
       </div>
 
       {isEditing ? (
-        <div className="flex space-x-4 pt-4">
+        <div className="flex space-x-4 mt-6">
           <button
             onClick={handleCancel}
-            className="w-full text-center bg-brand-tertiary hover:bg-opacity-80 text-gray-300 font-bold py-3 px-4 rounded-lg transition-colors"
+            className="w-full py-2 rounded-lg bg-brand-tertiary text-brand-text-secondary font-semibold hover:bg-brand-border transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full text-center bg-brand-neon hover:bg-green-400 disabled:hover:bg-brand-neon/80 disabled:opacity-60 disabled:cursor-not-allowed text-brand-primary font-bold py-3 px-4 rounded-lg transition-colors"
+            className="w-full py-2 rounded-lg bg-brand-neon text-brand-primary font-semibold hover:bg-green-400 transition-colors shadow-lg shadow-brand-neon/20 disabled:opacity-60 disabled:hover:bg-brand-neon"
           >
             {isSaving ? "Saving..." : "Save Changes"}
           </button>

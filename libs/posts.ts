@@ -1,4 +1,9 @@
-import { Activity, ActivityType, Comment } from "@/app/types";
+import {
+  Activity,
+  ActivityMention,
+  ActivityType,
+  Comment,
+} from "@/app/types";
 
 export interface PostOwnerDTO {
   name?: string | null;
@@ -29,6 +34,7 @@ export interface PostDTO {
     name?: string | null;
   };
   replyCount?: number;
+  mentions?: ActivityMention[];
 }
 
 const FALLBACK_AVATAR =
@@ -101,8 +107,8 @@ export const mapPostToActivity = (post: PostDTO): Activity => ({
   timestamp: formatRelativeTime(post.createdAt),
   replyingTo: post.replyingTo,
   replyCount: typeof post.replyCount === "number" ? post.replyCount : 0,
+  mentions: post.mentions,
 });
 
 export const mapPostsToActivities = (posts: PostDTO[]): Activity[] =>
   posts.map(mapPostToActivity);
-

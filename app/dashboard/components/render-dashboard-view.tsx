@@ -1,7 +1,6 @@
 import React from "react";
 import Feed from "@/app/dashboard/components/Feed";
 import WeeklyInsights from "@/app/dashboard/components/Dashboard";
-import Challenges from "@/app/dashboard/components/Challenges";
 import Profile from "@/app/dashboard/components/Profile";
 import PublicProfile from "@/app/dashboard/components/PublicProfile";
 import Notifications from "@/app/dashboard/components/Notifications";
@@ -9,11 +8,11 @@ import Connections from "@/app/dashboard/components/Connections";
 import Research from "@/app/dashboard/components/Research";
 import Settings from "@/app/dashboard/components/Settings";
 import ActivityDetail from "@/app/dashboard/components/ActivityDetail";
+import Leaderboards from "@/app/dashboard/components/Leaderboards";
 import {
   Activity,
-  Challenge,
+  CategoryLeaderboard,
   Notification,
-  UserChallenge,
   UserProfile,
   View,
 } from "@/app/types";
@@ -32,6 +31,7 @@ interface CommonFeedProps {
     activityId: string,
     options?: { commentId?: string }
   ) => void;
+  allUsers?: Record<string, UserProfile>;
 }
 
 export interface DashboardRenderParams {
@@ -50,9 +50,6 @@ export interface DashboardRenderParams {
   isResearchLoading: boolean;
   researchError: string | null;
   fetchResearchDirectory: (options?: { force?: boolean }) => Promise<void>;
-  challenges: Challenge[];
-  userChallenges: UserChallenge[];
-  handleJoinChallenge: (challengeId: string) => void;
   handleUpdateProfile: (profile: UserProfile) => void;
   handleViewConnections: (username: string) => void;
   handleSendConnectRequest: (username: string) => Promise<void>;
@@ -68,6 +65,7 @@ export interface DashboardRenderParams {
   handleClosePublicProfile: () => void;
   notifications: Notification[];
   handleClearNotifications: () => Promise<void> | void;
+  handleNotificationSeen: (notificationId: string) => Promise<void> | void;
   handleAcceptConnectRequest: (
     notificationId: string,
     fromUsername: string
@@ -84,6 +82,11 @@ export interface DashboardRenderParams {
   handleCloseActivityDetail: () => void;
   loadingReplyThreads: Record<string, boolean>;
   userActivitiesByUsername: Record<string, Activity[]>;
+  allUsers?: Record<string, UserProfile>;
+  leaderboards: CategoryLeaderboard[];
+  isLeaderboardsLoading: boolean;
+  leaderboardsError: string | null;
+  refreshLeaderboards: () => Promise<void>;
 }
 
 const renderDashboardView = ({
@@ -102,9 +105,6 @@ const renderDashboardView = ({
   isResearchLoading,
   researchError,
   fetchResearchDirectory,
-  challenges,
-  userChallenges,
-  handleJoinChallenge,
   handleUpdateProfile,
   handleViewConnections,
   handleSendConnectRequest,
@@ -120,6 +120,7 @@ const renderDashboardView = ({
   handleClosePublicProfile,
   notifications,
   handleClearNotifications,
+  handleNotificationSeen,
   handleAcceptConnectRequest,
   handleDeclineConnectRequest,
   handleViewActivity,
@@ -130,6 +131,11 @@ const renderDashboardView = ({
   handleCloseActivityDetail,
   loadingReplyThreads,
   userActivitiesByUsername,
+  allUsers,
+  leaderboards,
+  isLeaderboardsLoading,
+  leaderboardsError,
+  refreshLeaderboards,
 }: DashboardRenderParams): React.ReactNode => {
   switch (currentView) {
     case "feed":
@@ -139,6 +145,7 @@ const renderDashboardView = ({
           onRefresh={onRefresh}
           onLoadMore={onLoadMore}
           isLoadingMore={isLoadingMore}
+          allUsers={allUsers}
         />
       );
     case "activityDetail": {
@@ -178,6 +185,7 @@ const renderDashboardView = ({
           isThreadLoading={Boolean(
             loadingReplyThreads[viewingActivityId] ?? false
           )}
+          allUsers={allUsers}
         />
       );
     }
@@ -212,14 +220,6 @@ const renderDashboardView = ({
         />
       );
     }
-    case "challenges":
-      return (
-        <Challenges
-          challenges={challenges}
-          userChallenges={userChallenges}
-          onJoinChallenge={handleJoinChallenge}
-        />
-      );
     case "profile":
       if (!userProfile) {
         return (
@@ -241,8 +241,7 @@ const renderDashboardView = ({
 
       {
         const username = userProfile.username;
-        const cachedActivities =
-          userActivitiesByUsername[username] ?? null;
+        const cachedActivities = userActivitiesByUsername[username] ?? null;
         const profileActivities =
           cachedActivities ??
           activities.filter((activity) => activity.username === username);
@@ -260,6 +259,7 @@ const renderDashboardView = ({
             setCurrentView={setCurrentView}
             onViewActivityDetail={handleViewActivityDetail}
             allActivities={cachedActivities ?? activities}
+            allUsers={allUsers}
           />
         );
       }
@@ -286,8 +286,7 @@ const renderDashboardView = ({
       }
       if (viewingProfile) {
         const username = viewingProfile.username;
-        const cachedActivities =
-          userActivitiesByUsername[username] ?? null;
+        const cachedActivities = userActivitiesByUsername[username] ?? null;
         const publicProfileActivities =
           cachedActivities ??
           activities.filter(
@@ -309,6 +308,7 @@ const renderDashboardView = ({
             onViewProfile={handleViewProfile}
             onViewActivityDetail={handleViewActivityDetail}
             allActivities={cachedActivities ?? activities}
+            allUsers={allUsers}
           />
         );
       }
@@ -322,6 +322,7 @@ const renderDashboardView = ({
           onDeclineConnectRequest={handleDeclineConnectRequest}
           onViewProfile={handleViewProfile}
           onViewActivity={handleViewActivity}
+          onNotificationSeen={handleNotificationSeen}
         />
       );
     case "connections":
@@ -353,6 +354,17 @@ const renderDashboardView = ({
           userProfile={userProfile}
           onBack={() => setCurrentView("profile")}
           onUpdateEmail={(email) => console.log("Email updated:", email)}
+        />
+      );
+    case "leaderboards":
+      return (
+        <Leaderboards
+          data={leaderboards}
+          isLoading={isLeaderboardsLoading}
+          error={leaderboardsError}
+          onRefresh={refreshLeaderboards}
+          currentUser={userProfile}
+          onViewProfile={handleViewProfile}
         />
       );
     default:

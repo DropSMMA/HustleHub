@@ -4,9 +4,9 @@ import React from "react";
 import { View } from "@/app/types";
 import { HomeIcon } from "./icons/HomeIcon";
 import { SparklesIcon } from "./icons/SparklesIcon";
-import { TrophyIcon } from "./icons/TrophyIcon";
 import { UserIcon } from "./icons/UserIcon";
 import { SearchIcon } from "./icons/SearchIcon";
+import { LeaderboardIcon } from "./icons/LeaderboardIcon";
 
 interface BottomNavProps {
   currentView: View;
@@ -21,7 +21,7 @@ const NavItem: React.FC<{
 }> = ({ label, icon, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center w-1/5 transition-colors duration-200 ${
+    className={`flex flex-col items-center justify-center flex-1 transition-colors duration-200 ${
       isActive ? "text-brand-neon" : "text-gray-400 hover:text-white"
     }`}
   >
@@ -61,10 +61,10 @@ const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => setCurrentView("research")}
         />
         <NavItem
-          label="Challenges"
-          icon={<TrophyIcon />}
-          isActive={currentView === "challenges"}
-          onClick={() => setCurrentView("challenges")}
+          label="Leaders"
+          icon={<LeaderboardIcon />}
+          isActive={currentView === "leaderboards"}
+          onClick={() => setCurrentView("leaderboards")}
         />
         <NavItem
           label="Profile"

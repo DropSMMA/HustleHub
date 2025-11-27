@@ -16,7 +16,7 @@ export interface IUser extends Document {
   username?: string;
   image?: string;
   tagline?: string;
-  projects: string[];
+  projects: UserProject[];
   focuses: FocusArea[];
   socials?: UserSocials;
   connections: string[];
@@ -26,6 +26,11 @@ export interface IUser extends Document {
   customerId?: string;
   priceId?: string;
   hasAccess: boolean;
+}
+
+export interface UserProject {
+  name: string;
+  url?: string;
 }
 
 // USER SCHEMA
@@ -58,7 +63,20 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
     projects: {
-      type: [String],
+      type: [
+        {
+          name: {
+            type: String,
+            trim: true,
+            required: true,
+            maxlength: 120,
+          },
+          url: {
+            type: String,
+            trim: true,
+          },
+        },
+      ],
       default: [],
     },
     focuses: {

@@ -1,5 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, UserProfile } from "@/app/types";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Activity, ActivityMention, UserProfile } from "@/app/types";
 import { BackIcon } from "./icons/BackIcon";
 import { ThumbsUpIcon } from "./icons/ThumbsUpIcon";
 import { ThumbsUpFilledIcon } from "./icons/ThumbsUpFilledIcon";
@@ -8,6 +14,7 @@ import { TrashIcon } from "./icons/TrashIcon";
 import ConfirmationModal from "./ConfirmationModal";
 import ActivityCard from "./ActivityCard";
 import ImageModal from "./icons/imagemodal";
+import { BoltIcon } from "./icons/BoltIcon";
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -22,6 +29,7 @@ interface ActivityDetailProps {
   highlightedReplyId?: string | null;
   onViewActivityDetail: (activityId: string) => void;
   isThreadLoading?: boolean;
+  allUsers?: Record<string, UserProfile>;
 }
 
 const ActivityDetail: React.FC<ActivityDetailProps> = ({
@@ -37,6 +45,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   highlightedReplyId,
   onViewActivityDetail,
   isThreadLoading = false,
+  allUsers,
 }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
@@ -74,6 +83,234 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     return counts;
   }, [activities]);
 
+  const mentions = activity.mentions ?? [];
+
+  const mentionMetaMap = useMemo(() => {
+    const map = new Map<string, ActivityMention>();
+    mentions.forEach((mention) => {
+      if (!mention) {
+        return;
+      }
+      const keys = new Set<string>();
+      if (mention.handle) {
+        keys.add(mention.handle.toLowerCase());
+        keys.add(mention.handle.replace(/\s+/g, "").toLowerCase());
+      }
+      if (mention.username) {
+        keys.add(mention.username.toLowerCase());
+      }
+      if (mention.label) {
+        keys.add(mention.label.toLowerCase());
+        keys.add(mention.label.replace(/\s+/g, "").toLowerCase());
+        keys.add(mention.label.replace(/\s+/g, "-").toLowerCase());
+      }
+      keys.forEach((key) => {
+        if (key) {
+          map.set(key, mention);
+        }
+      });
+    });
+    return map;
+  }, [mentions]);
+
+  const resolveUser = useCallback(
+    (handle: string): UserProfile | undefined => {
+      if (!allUsers) {
+        return undefined;
+      }
+      const normalized = handle.toLowerCase();
+      return (
+        allUsers[normalized] ??
+        Object.values(allUsers).find(
+          (candidate) => candidate.username.toLowerCase() === normalized
+        )
+      );
+    },
+    [allUsers]
+  );
+
+  const posterProfile = useMemo(() => {
+    if (!allUsers) {
+      return undefined;
+    }
+    return resolveUser(activity.username);
+  }, [allUsers, resolveUser, activity.username]);
+
+  const findMention = useCallback(
+    (token: string): ActivityMention | undefined => {
+      const normalized = token.toLowerCase();
+      if (mentionMetaMap.has(normalized)) {
+        return mentionMetaMap.get(normalized);
+      }
+      const hyphenated = token.replace(/\s+/g, "-").toLowerCase();
+      if (mentionMetaMap.has(hyphenated)) {
+        return mentionMetaMap.get(hyphenated);
+      }
+      const compact = token.replace(/\s+/g, "").toLowerCase();
+      return mentionMetaMap.get(compact);
+    },
+    [mentionMetaMap]
+  );
+
+  const renderDescription = useCallback(
+    (text: string): React.ReactNode => {
+      if (!text) {
+        return null;
+      }
+
+      const mentionRegex = /@([a-zA-Z0-9._-]+)/g;
+      const parts = text.split(mentionRegex);
+
+      if (parts.length === 1) {
+        return (
+          <p className="text-brand-text-primary text-lg leading-relaxed whitespace-pre-wrap">
+            {text}
+          </p>
+        );
+      }
+
+      return (
+        <p className="text-brand-text-primary text-lg leading-relaxed whitespace-pre-wrap">
+          {parts.map((part, index) => {
+            if (index % 2 === 0) {
+              return part;
+            }
+
+            const mentionToken = part;
+            const mentionMetadata = findMention(mentionToken);
+
+            if (mentionMetadata) {
+              if (mentionMetadata.type === "startup") {
+                const displayLabel =
+                  mentionMetadata.label ?? `@${mentionToken}`;
+                if (mentionMetadata.url) {
+                  return (
+                    <a
+                      key={`mention-${index}-${mentionToken}`}
+                      href={mentionMetadata.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                      className="font-bold text-brand-neon hover:underline focus:outline-none"
+                    >
+                      {displayLabel}
+                    </a>
+                  );
+                }
+                return (
+                  <strong
+                    key={`mention-${index}-${mentionToken}`}
+                    className="text-brand-neon"
+                  >
+                    {displayLabel}
+                  </strong>
+                );
+              }
+
+              const targetUsername =
+                mentionMetadata.username ?? mentionMetadata.handle;
+              const label =
+                mentionMetadata.label ??
+                mentionMetadata.username ??
+                `@${mentionToken}`;
+              if (targetUsername) {
+                return (
+                  <button
+                    key={`mention-${index}-${mentionToken}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void onViewProfile(targetUsername);
+                    }}
+                    className="font-bold text-brand-neon hover:underline focus:outline-none"
+                  >
+                    {label}
+                  </button>
+                );
+              }
+            }
+
+            const userCandidate = resolveUser(mentionToken);
+            if (userCandidate) {
+              return (
+                <button
+                  key={`mention-${index}-${mentionToken}`}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void onViewProfile(userCandidate.username);
+                  }}
+                  className="font-bold text-brand-neon hover:underline focus:outline-none"
+                >
+                  {userCandidate.name || `@${mentionToken}`}
+                </button>
+              );
+            }
+
+            const projectCandidate = posterProfile?.projects.find((project) => {
+              const normalizedToken = mentionToken.toLowerCase();
+              const compactName = project.name
+                .replace(/\s+/g, "")
+                .toLowerCase();
+              const hyphenName = project.name
+                .replace(/\s+/g, "-")
+                .toLowerCase();
+              return (
+                compactName === normalizedToken ||
+                hyphenName === normalizedToken
+              );
+            });
+
+            if (projectCandidate) {
+              if (projectCandidate.url) {
+                return (
+                  <a
+                    key={`mention-${index}-${mentionToken}`}
+                    href={projectCandidate.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    className="font-bold text-brand-neon hover:underline focus:outline-none"
+                  >
+                    {projectCandidate.name}
+                  </a>
+                );
+              }
+              return (
+                <strong
+                  key={`mention-${index}-${mentionToken}`}
+                  className="text-brand-neon"
+                >
+                  {projectCandidate.name}
+                </strong>
+              );
+            }
+
+            return `@${mentionToken}`;
+          })}
+        </p>
+      );
+    },
+    [findMention, onViewProfile, posterProfile, resolveUser]
+  );
+
+  const { exactTimeLabel, exactDateTimeLabel } = useMemo(() => {
+    if (!activity.timestampExact) {
+      return { exactTimeLabel: null, exactDateTimeLabel: null };
+    }
+    const exactDate = new Date(activity.timestampExact);
+    if (Number.isNaN(exactDate.getTime())) {
+      return { exactTimeLabel: null, exactDateTimeLabel: null };
+    }
+    return {
+      exactTimeLabel: exactDate.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      exactDateTimeLabel: exactDate.toLocaleString(),
+    };
+  }, [activity.timestampExact]);
+
   const replies = useMemo(
     () =>
       activities.filter(
@@ -81,6 +318,31 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
       ),
     [activities, activity.id]
   );
+
+  const isStreakActive = useMemo(() => {
+    const detailStreak = activity.streak;
+    if (
+      !detailStreak ||
+      detailStreak.currentStreak <= 1 ||
+      !detailStreak.lastActiveDate
+    ) {
+      return false;
+    }
+    const today = new Date();
+    const todayUTC = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    );
+    const last = new Date(detailStreak.lastActiveDate);
+    if (Number.isNaN(last.getTime())) {
+      return false;
+    }
+    const lastUTC = new Date(
+      Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate())
+    );
+    const diff =
+      (todayUTC.getTime() - lastUTC.getTime()) / (24 * 60 * 60 * 1000);
+    return diff <= 1;
+  }, [activity.streak]);
 
   useEffect(() => {
     if (!highlightedReplyId) {
@@ -149,7 +411,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
     if (activity.image) {
       setIsImageModalOpen(true);
       if (onOpenImage) {
-      onOpenImage(activity.image);
+        onOpenImage(activity.image);
       }
     }
   };
@@ -187,8 +449,23 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               <p className="text-sm font-bold text-brand-text-primary group-hover/user:text-brand-neon transition-colors">
                 {activity.user}
               </p>
-              <p className="text-xs text-brand-text-secondary">
-                {activity.timestamp}
+              <p
+                className="text-xs text-brand-text-secondary flex items-center gap-2"
+                {...(exactDateTimeLabel
+                  ? { title: exactDateTimeLabel }
+                  : undefined)}
+              >
+                <span>{activity.timestamp}</span>
+                {exactTimeLabel && (
+                  <>
+                    <span className="text-brand-border" aria-hidden="true">
+                      |
+                    </span>
+                    <span className="text-brand-text-secondary">
+                      {exactTimeLabel}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </button>
@@ -212,9 +489,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               </span>
             </p>
           )}
-          <p className="text-brand-text-primary text-lg leading-relaxed whitespace-pre-wrap">
-            {displayedDescription}
-          </p>
+          {renderDescription(displayedDescription)}
           {shouldTruncateDescription && (
             <button
               type="button"
@@ -224,11 +499,17 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               {isDescriptionExpanded ? "See less" : "See more"}
             </button>
           )}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {activity.type && (
-              <span className="text-xs font-semibold bg-brand-neon/10 text-brand-neon px-3 py-1 rounded-full">
-                {activity.type}
-              </span>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {(activity.type || isStreakActive) && (
+              <div className="inline-flex items-center gap-x-2 bg-brand-neon/10 text-brand-neon rounded-full text-xs font-semibold px-3 py-1">
+                {isStreakActive && activity.streak && (
+                  <span className="inline-flex items-center gap-0.5 animate-pop">
+                    <BoltIcon className="h-4 w-4" />
+                    <span>{activity.streak.currentStreak}</span>
+                  </span>
+                )}
+                {activity.type && <span>{activity.type}</span>}
+              </div>
             )}
             {activity.stats && (
               <span className="text-xs font-semibold bg-brand-tertiary text-brand-text-secondary px-3 py-1 rounded-full">
@@ -316,13 +597,12 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
                 onViewProfile={onViewProfile}
                 onToggleLike={onToggleLike}
                 onDelete={onDeleteActivity}
-                    currentUser={currentUser}
+                currentUser={currentUser}
                 onClick={() => onViewActivityDetail(reply.id)}
-                replyCount={
-                  reply.replyCount ?? replyCounts.get(reply.id) ?? 0
-                }
+                replyCount={reply.replyCount ?? replyCounts.get(reply.id) ?? 0}
                 isHighlighted={reply.id === highlightedReplyId}
-                  />
+                allUsers={allUsers}
+              />
             ))}
           </div>
         ) : !isThreadLoading ? (

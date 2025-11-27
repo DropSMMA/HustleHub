@@ -14,6 +14,9 @@ export const DEFAULT_AVATAR =
   "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 export const DEFAULT_POST_LIMIT = 40;
 
+const isoHoursAgo = (hours: number) =>
+  new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
 export const createWelcomeActivity = (profile: UserProfile): Activity => ({
   id: `${Date.now() + 1}`,
   user: profile.name,
@@ -29,6 +32,7 @@ export const createWelcomeActivity = (profile: UserProfile): Activity => ({
   likedBy: [],
   comments: [],
   timestamp: "Just now",
+  timestampExact: new Date().toISOString(),
 });
 
 export const MOCK_USER_PROFILES: Record<string, UserProfile> = {
@@ -37,7 +41,10 @@ export const MOCK_USER_PROFILES: Record<string, UserProfile> = {
     name: "Alex Devito",
     avatar: "https://i.pravatar.cc/150?u=alexdevito",
     tagline: "Building the future of SaaS.",
-    projects: "ShipFast, AI-Writer",
+    projects: [
+      { name: "ShipFast", url: "https://shipfast.co" },
+      { name: "AI-Writer" },
+    ],
     focuses: [FocusArea.DeepWork, FocusArea.Startup, FocusArea.Fitness],
     connections: ["jennamiles"],
     socials: {
@@ -51,7 +58,10 @@ export const MOCK_USER_PROFILES: Record<string, UserProfile> = {
     name: "Jenna Miles",
     avatar: "https://i.pravatar.cc/150?u=jennamiles",
     tagline: "Founder & Marathon Runner.",
-    projects: "ZenRun, WellnessHub",
+    projects: [
+      { name: "ZenRun", url: "https://zenrun.com" },
+      { name: "WellnessHub" },
+    ],
     focuses: [FocusArea.Fitness, FocusArea.Recharge, FocusArea.Networking],
     connections: ["alexdevito", "samuraisam"],
     socials: {
@@ -64,7 +74,7 @@ export const MOCK_USER_PROFILES: Record<string, UserProfile> = {
     name: "Samurai Sam",
     avatar: "https://i.pravatar.cc/150?u=samuraisam",
     tagline: "Lifting weights and building startups.",
-    projects: "LiftLog, ProteinPlus",
+    projects: [{ name: "LiftLog" }, { name: "ProteinPlus" }],
     focuses: [FocusArea.Fitness, FocusArea.Startup],
     connections: ["jennamiles"],
   },
@@ -73,7 +83,7 @@ export const MOCK_USER_PROFILES: Record<string, UserProfile> = {
     name: "Tech Guru",
     avatar: "https://i.pravatar.cc/150?u=techguru",
     tagline: "Coding the matrix.",
-    projects: "NeuralNet Inc.",
+    projects: [{ name: "NeuralNet Inc." }],
     focuses: [FocusArea.DeepWork],
     connections: [],
   },
@@ -114,6 +124,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
       },
     ],
     timestamp: "2h ago",
+    timestampExact: isoHoursAgo(2),
   },
   {
     id: "2",
@@ -135,6 +146,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
       },
     ],
     timestamp: "5h ago",
+    timestampExact: isoHoursAgo(5),
   },
   {
     id: "3",
@@ -148,6 +160,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
     kudos: 210,
     comments: [],
     timestamp: "8h ago",
+    timestampExact: isoHoursAgo(8),
   },
 ];
 

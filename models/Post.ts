@@ -1,6 +1,6 @@
 import mongoose, { Schema, Types } from "mongoose";
 import type { Document, Model } from "mongoose";
-import { ActivityType } from "@/app/types";
+import { ActivityType, type ActivityMention } from "@/app/types";
 import toJSON from "./plugins/toJSON";
 
 export interface IReply {
@@ -34,6 +34,7 @@ export interface IPost extends Document {
   likedBy: Types.ObjectId[];
   comments: IComment[];
   replyingTo?: ReplyingToSnapshot | null;
+  mentions?: ActivityMention[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -102,6 +103,22 @@ const postSchema = new Schema<IPost>(
       type: replyingToSchema,
       default: null,
     },
+    mentions: {
+      type: [
+        new Schema<ActivityMention>(
+          {
+            id: { type: String, required: true },
+            type: { type: String, enum: ["connection", "startup"], required: true },
+            handle: { type: String, required: true },
+            label: { type: String, required: true },
+            username: { type: String },
+            url: { type: String },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,
@@ -117,4 +134,3 @@ const Post =
   mongoose.model<IPost>("Post", postSchema);
 
 export default Post;
-

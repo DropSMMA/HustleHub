@@ -19,6 +19,7 @@ interface FeedProps {
     activityId: string,
     options?: { commentId?: string }
   ) => void;
+  allUsers?: Record<string, UserProfile>;
 }
 
 const Feed: React.FC<FeedProps> = ({
@@ -34,6 +35,7 @@ const Feed: React.FC<FeedProps> = ({
   onLoadMore,
   isLoadingMore = false,
   onViewActivityDetail,
+  allUsers,
 }) => {
   const [pullStart, setPullStart] = useState<number>(0);
   const [pullDistance, setPullDistance] = useState<number>(0);
@@ -212,6 +214,7 @@ const Feed: React.FC<FeedProps> = ({
             replyCount={
               activity.replyCount ?? derivedReplyCounts.get(activity.id) ?? 0
             }
+            allUsers={allUsers}
           />
         ))
       ) : (

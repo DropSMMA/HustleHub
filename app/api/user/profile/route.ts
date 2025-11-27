@@ -6,6 +6,10 @@ import connectMongo from "@/libs/mongoose";
 import { deleteS3ObjectByUrl } from "@/libs/s3-utils";
 import User from "@/models/User";
 import { FocusArea } from "@/app/types";
+import {
+  normalizeProjectLinks,
+  sanitizeProjectLinksForPersistence,
+} from "@/libs/projects";
 
 const socialsSchema = z
   .object({
@@ -19,6 +23,16 @@ const socialsSchema = z
 
 const isValidAvatar = (value: string) => /^https?:\/\//.test(value);
 
+const projectSchema = z.object({
+  name: z.string().trim().min(1, "Project name is required.").max(120),
+  url: z
+    .string()
+    .trim()
+    .max(255, "Project link is too long.")
+    .url("Project link must be a valid URL.")
+    .optional(),
+});
+
 const updateProfileSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
@@ -30,7 +44,7 @@ const updateProfileSchema = z
         message: "Avatar must be a valid URL.",
       })
       .optional(),
-    projects: z.array(z.string().trim().max(120)).optional(),
+    projects: z.array(projectSchema).optional(),
     focuses: z
       .array(z.nativeEnum(FocusArea))
       .min(1, "Select at least one focus area.")
@@ -73,7 +87,11 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 200 });
     }
 
-    return NextResponse.json({ user: user.toJSON() }, { status: 200 });
+    const json = user.toJSON();
+    return NextResponse.json(
+      { user: { ...json, projects: normalizeProjectLinks(json.projects) } },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[user][profile][GET]", error);
     return NextResponse.json(
@@ -129,9 +147,7 @@ export async function PATCH(request: Request) {
     }
 
     if (payload.projects !== undefined) {
-      user.projects = payload.projects
-        .map((project) => project.trim())
-        .filter(Boolean);
+      user.projects = sanitizeProjectLinksForPersistence(payload.projects);
     }
 
     if (payload.socials !== undefined) {
@@ -162,7 +178,11 @@ export async function PATCH(request: Request) {
       await deleteS3ObjectByUrl(previousAvatar);
     }
 
-    return NextResponse.json({ user: updatedUser.toJSON() }, { status: 200 });
+    const json = updatedUser.toJSON();
+    return NextResponse.json(
+      { user: { ...json, projects: normalizeProjectLinks(json.projects) } },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[user][profile][PATCH]", error);
 

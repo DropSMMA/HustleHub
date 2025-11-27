@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import {
@@ -27,6 +27,7 @@ import {
 } from "../lib/dashboard-constants";
 import renderDashboardView from "./render-dashboard-view";
 import { getHustleBalanceInsight } from "@/libs/geminiService";
+import { useStreakLeaderboards } from "../hooks/useStreakLeaderboards";
 
 const DashboardController: React.FC = () => {
   const { data: session, status: sessionStatus } = useSession();
@@ -51,7 +52,7 @@ const DashboardController: React.FC = () => {
   const [viewingConnectionsOf, setViewingConnectionsOf] =
     useState<UserProfile | null>(null);
   const [challenges] = useState<Challenge[]>(MOCK_CHALLENGES);
-  const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
+  const [, setUserChallenges] = useState<UserChallenge[]>([]);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(
     null
   );
@@ -72,6 +73,7 @@ const DashboardController: React.FC = () => {
     setNotifications,
     refreshNotifications,
     handleClearNotifications,
+    markNotificationsAsRead,
   } = useDashboardNotifications();
 
   const {
@@ -128,6 +130,39 @@ const DashboardController: React.FC = () => {
     userProfile,
     setConnectionDirectory,
   });
+
+  const {
+    leaderboards,
+    isLoading: isLeaderboardsLoading,
+    error: leaderboardsError,
+    fetchLeaderboards,
+  } = useStreakLeaderboards();
+
+  const refreshLeaderboards = useCallback(async () => {
+    await fetchLeaderboards({ force: true });
+  }, [fetchLeaderboards]);
+
+  const allKnownUsers = useMemo(() => {
+    const directory: Record<string, UserProfile> = {};
+
+    Object.values(MOCK_USER_PROFILES).forEach((profile) => {
+      directory[profile.username.toLowerCase()] = profile;
+    });
+
+    Object.values(connectionDirectory).forEach((profile) => {
+      directory[profile.username.toLowerCase()] = profile;
+    });
+
+    if (userProfile) {
+      directory[userProfile.username.toLowerCase()] = userProfile;
+    }
+
+    researchUsers.forEach((profile) => {
+      directory[profile.username.toLowerCase()] = profile;
+    });
+
+    return directory;
+  }, [connectionDirectory, researchUsers, userProfile]);
 
   const {
     handleCompleteOnboarding,
@@ -193,21 +228,12 @@ const DashboardController: React.FC = () => {
     fetchResearchDirectory,
   ]);
 
-  const handleJoinChallenge = (challengeId: string) => {
-    setUserChallenges((prev) => {
-      if (prev.some((uc) => uc.challengeId === challengeId)) {
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          challengeId: challengeId,
-          progress: 0,
-          streak: 0,
-        },
-      ];
-    });
-  };
+  useEffect(() => {
+    if (currentView !== "leaderboards") {
+      return;
+    }
+    void fetchLeaderboards();
+  }, [currentView, fetchLeaderboards]);
 
   const ensureRepliesLoaded = useCallback(
     (activityId: string | null) => {
@@ -294,6 +320,13 @@ const DashboardController: React.FC = () => {
     handleViewActivityDetail(postId);
   };
 
+  const handleNotificationSeen = useCallback(
+    (notificationId: string) => {
+      void markNotificationsAsRead(notificationId);
+    },
+    [markNotificationsAsRead]
+  );
+
   const handleClearHighlightedPost = () => {
     setHighlightedPostId(null);
   };
@@ -358,6 +391,7 @@ const DashboardController: React.FC = () => {
     highlightedPostId: highlightedPostId,
     onClearHighlight: handleClearHighlightedPost,
     onViewActivityDetail: handleViewActivityDetail,
+    allUsers: allKnownUsers,
   };
 
   const viewContent = renderDashboardView({
@@ -376,9 +410,6 @@ const DashboardController: React.FC = () => {
     isResearchLoading,
     researchError,
     fetchResearchDirectory,
-    challenges,
-    userChallenges,
-    handleJoinChallenge,
     handleUpdateProfile,
     handleViewConnections,
     handleSendConnectRequest,
@@ -394,6 +425,7 @@ const DashboardController: React.FC = () => {
     handleClosePublicProfile,
     notifications,
     handleClearNotifications,
+    handleNotificationSeen,
     handleAcceptConnectRequest,
     handleDeclineConnectRequest,
     handleViewActivity,
@@ -404,6 +436,11 @@ const DashboardController: React.FC = () => {
     handleCloseActivityDetail,
     loadingReplyThreads,
     userActivitiesByUsername,
+    allUsers: allKnownUsers,
+    leaderboards,
+    isLeaderboardsLoading,
+    leaderboardsError,
+    refreshLeaderboards,
   });
 
   return (
@@ -428,6 +465,7 @@ const DashboardController: React.FC = () => {
         onClose={handleCloseLogModal}
         onPostCreated={handleLogActivity}
         userProfile={userProfile}
+        allUsers={allKnownUsers}
         replyingToActivity={replyingToActivity}
       />
     </div>

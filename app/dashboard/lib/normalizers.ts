@@ -1,5 +1,6 @@
 import {
   Activity,
+  ActivityStreak,
   ActivityType,
   Comment,
   ConnectionPreview,
@@ -7,6 +8,7 @@ import {
   UserProfile,
 } from "@/app/types";
 import { DEFAULT_AVATAR } from "./dashboard-constants";
+import { normalizeProjectLinks } from "@/libs/projects";
 
 export interface PostOwnerDTO {
   name?: string | null;
@@ -37,6 +39,7 @@ export interface PostDTO {
     name?: string | null;
   };
   replyCount?: number;
+  streak?: ActivityStreak;
 }
 
 export const formatRelativeTime = (dateString: string): string => {
@@ -101,8 +104,10 @@ export const mapPostToActivity = (post: PostDTO): Activity => ({
   likedBy: post.likedBy ?? [],
   comments: post.comments ?? [],
   timestamp: formatRelativeTime(post.createdAt),
+  timestampExact: post.createdAt,
   replyingTo: post.replyingTo,
   replyCount: typeof post.replyCount === "number" ? post.replyCount : 0,
+  streak: post.streak,
 });
 
 export const mapPostsToActivities = (posts: PostDTO[]): Activity[] =>
@@ -115,7 +120,7 @@ export const mapPreviewToUserProfile = (
   name: preview.name || preview.username,
   avatar: preview.avatar || DEFAULT_AVATAR,
   tagline: preview.tagline ?? "",
-  projects: preview.projects ?? "",
+  projects: normalizeProjectLinks(preview.projects),
   focuses: Array.isArray(preview.focuses)
     ? preview.focuses.filter((focus): focus is FocusArea =>
         Object.values(FocusArea).includes(focus)
@@ -165,23 +170,7 @@ export const normalizeDirectoryUser = (
 
   const tagline = typeof user.tagline === "string" ? user.tagline.trim() : "";
 
-  const projectsValue = user.projects;
-  let projects = "";
-
-  if (Array.isArray(projectsValue)) {
-    projects = projectsValue
-      .map((entry) =>
-        typeof entry === "string" ? entry.trim() : String(entry ?? "")
-      )
-      .filter((entry) => entry.length > 0)
-      .join(", ");
-  } else if (typeof projectsValue === "string") {
-    projects = projectsValue
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0)
-      .join(", ");
-  }
+  const projects = normalizeProjectLinks(user.projects);
 
   const focuses = Array.isArray(user.focuses)
     ? (user.focuses
@@ -221,4 +210,3 @@ export const normalizeDirectoryUser = (
     socials: socials && Object.keys(socials).length > 0 ? socials : undefined,
   };
 };
-

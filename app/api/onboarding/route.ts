@@ -29,7 +29,22 @@ const onboardingSchema = z.object({
     })
     .optional(),
   tagline: z.string().trim().max(200).optional(),
-  projects: z.array(z.string().trim().max(120)).optional(),
+  projects: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(120),
+        url: z
+          .string()
+          .trim()
+          .refine(
+            (val) => !val || val.length === 0 || /^https?:\/\//.test(val),
+            { message: "URL must be a valid HTTP/HTTPS URL." }
+          )
+          .optional()
+          .nullable(),
+      })
+    )
+    .optional(),
   focuses: z
     .array(z.nativeEnum(FocusArea))
     .min(1, "Select at least one focus area.")
@@ -52,7 +67,7 @@ export async function POST(request: Request) {
     await connectMongo();
 
     const baseUsername = sanitizeUsername(payload.username);
-    const projects = payload.projects?.filter(Boolean) ?? [];
+    const projects = payload.projects?.filter((p) => p.name?.trim()) ?? [];
     const socials = payload.socials ?? {};
 
     const existingUserByEmail = await User.findOne({ email: payload.email });
